@@ -1,11 +1,9 @@
+use super::literal::Literal;
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     // Literals
-    LitInteger(i64), // Lit used as prefix to differentiate from type specifier
-    LitReal(f64),
-    LitString(String),
-    LitCharacter(char),
-    LitBoolean(bool), // True and False (keyword based)
+    Literal(Literal),
     // Identifiers
     VarIdentifier(String), // Identifier used as postfix to tell apart from respective keywords
     ConstIdentifier(String),
@@ -85,8 +83,8 @@ impl From<char> for Token {
 impl From<String> for Token {
     fn from(s: String) -> Self {
         match s.as_str() {
-            "True" => Token::LitBoolean(true),
-            "False" => Token::LitBoolean(false),
+            "True" => Token::Literal(Literal::Boolean(true)),
+            "False" => Token::Literal(Literal::Boolean(false)),
             "Int" => Token::Int,
             "Real" => Token::Real,
             "Bool" => Token::Bool,

@@ -1,4 +1,4 @@
-use crate::ast::{location::Location, token::Token};
+use crate::ast::{literal::Literal, location::Location, token::Token};
 use crate::error::lex::LexError;
 use peeking_take_while::PeekableExt;
 use std::iter::Peekable;
@@ -90,9 +90,9 @@ impl<'a> Lexer<'a> {
     fn number(&mut self) -> TokenResult {
         let num_str = self.collect_into_str(|(c, _)| c.is_ascii_digit() || *c == '.');
         match num_str.parse::<i64>() {
-            Ok(int) => Ok(Token::LitInteger(int)),
+            Ok(int) => Ok(Token::Literal(Literal::Integer(int))),
             Err(_) => match num_str.parse::<f64>() {
-                Ok(float) => Ok(Token::LitReal(float)),
+                Ok(float) => Ok(Token::Literal(Literal::Real(float))),
                 Err(_) => Err(LexError::UnterminatedReal),
             },
         }
@@ -101,7 +101,7 @@ impl<'a> Lexer<'a> {
         self.chars.next();
         let (c, _) = self.chars.next().ok_or(LexError::UnterminatedChar)?;
         match self.chars.next() {
-            Some(('\'', _)) => Ok(Token::LitCharacter(c)),
+            Some(('\'', _)) => Ok(Token::Literal(Literal::Character(c))),
             _ => Err(LexError::UnterminatedChar),
         }
     }
@@ -109,7 +109,7 @@ impl<'a> Lexer<'a> {
         self.chars.next();
         let s = self.collect_into_str(|(c, _)| *c != '"');
         match self.chars.next() {
-            Some(('"', _)) => Ok(Token::LitString(s)),
+            Some(('"', _)) => Ok(Token::Literal(Literal::Str(s))),
             _ => Err(LexError::UnterminatedString),
         }
     }
@@ -168,6 +168,7 @@ mod tests {
 
     #[test]
     fn token_tests() {
+        use crate::ast::literal;
         use Token::*;
         let token_strs = vec![
             "12",
@@ -225,12 +226,12 @@ mod tests {
             "->",
         ];
         let token_vals = vec![
-            LitInteger(12), // Lit used as prefix to differentiate from type specifier
-            LitReal(12.34),
-            LitString(std::string::String::from("bob")),
-            LitCharacter('c'),
-            LitBoolean(true),  // True and False (keyword based)
-            LitBoolean(false), // True and False (keyword based)
+            Literal(literal::Literal::Integer(12)),
+            Literal(literal::Literal::Real(12.34)),
+            Literal(literal::Literal::Str(std::string::String::from("bob"))),
+            Literal(literal::Literal::Character('c')),
+            Literal(literal::Literal::Boolean(true)),  
+            Literal(literal::Literal::Boolean(false)),  
             // Identifiers
             VarIdentifier(std::string::String::from("test_var")), // Identifier used as postfix to tell apart from respective keywords
             ConstIdentifier(std::string::String::from("PI")),
