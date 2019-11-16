@@ -30,30 +30,30 @@ pub trait Expression: Typed {
     fn evaluate(self) -> Literal;
 }
 
-struct UnaryExpression<Exp: Expression, UnOp: UnaryOperator> {
+struct UnaryExpression<Exp: Expression> {
     exp: Exp,
-    op: UnOp,
+    op: UnaryOperator,
 }
 
-impl<Exp: Expression, UnOp: UnaryOperator> Typed for UnaryExpression<Exp, UnOp> {
+impl<Exp: Expression> Typed for UnaryExpression<Exp> {
     fn get_type(&self) -> Type {
-        self.op.validate(&self.exp).unwrap()
+        self.op.validate(&self.exp).unwrap() //Assume that the created value is sound
     }
 }
 
-impl <Exp: Expression, UnOp: UnaryOperator> Expression for UnaryExpression<Exp,UnOp> {
+impl <Exp: Expression> Expression for UnaryExpression<Exp> {
     fn evaluate(self) -> Literal {
         self.op.evaluate(self.exp)
     }
 }
 
-struct BinaryExpression<A: Expression, B: Expression, BinOp: BinaryOperator> {
+struct BinaryExpression<A: Expression, B: Expression> {
     left: A,
-    op: BinOp,
+    op: BinaryOperator,
     right: B,
 }
 
-impl<A: Expression, B: Expression, BinOp: BinaryOperator> Typed for BinaryExpression<A, B, BinOp> {
+impl<A: Expression, B: Expression> Typed for BinaryExpression<A, B> {
     fn get_type(&self) -> Type {
         self.op.validate(&self.left, &self.right).unwrap() // Assume that the created value is sound
     }

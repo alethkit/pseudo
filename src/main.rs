@@ -12,7 +12,11 @@ fn main() {
     let chars = LocatableChars::from(test.trim());
     println!("chars formed, lexing");
     let lex = Lexer::from(chars);
-    let v: Vec<LocatableTokenResult> = lex.collect();
+    let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(|(r, l)| r.is_ok());
     println!("lexing complete");
-    println!("{:#?}", v)
+    if errors.is_empty() {
+        println!("Tokens: {:#?}", tokens);
+    } else {
+        println!("Errors: {:#?}", errors);
+    }
 }
