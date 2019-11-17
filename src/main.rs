@@ -1,7 +1,9 @@
 mod ast;
 mod error;
 mod lexer;
-use lexer::{Lexer, LocatableChars, LocatableTokenResult};
+mod parser;
+use lexer::{Lexer, LocatableChars};
+use parser::Parser;
 use std::io;
 
 fn main() {
@@ -16,6 +18,14 @@ fn main() {
     println!("lexing complete");
     if errors.is_empty() {
         println!("Tokens: {:#?}", tokens);
+        let mut pars = Parser::from(tokens.into_iter().map(|(r, l)| (r.unwrap(), l)));
+        match pars.expression() {
+            Ok(exp) => {
+                println!("Expression: {:#?}", exp);
+                println!("Value: {:#?}",exp.0.evaluate() );
+            },
+            Err(e) => println!("Error: {:#?}", e)
+        }
     } else {
         println!("Errors: {:#?}", errors);
     }

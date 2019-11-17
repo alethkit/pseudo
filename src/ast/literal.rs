@@ -1,5 +1,4 @@
 use super::types::{Type, Typed};
-use super::expression::Expression;
 
 #[derive(Debug, PartialEq)]
 pub enum Literal {    
@@ -20,12 +19,5 @@ impl Typed for Literal {
             Literal::Character(_) => Type::Character,
             Literal::Boolean(_) => Type::Boolean
         }
-    }
-}
-
-
-impl Expression for Literal {
-    fn evaluate(self) -> Literal {
-        self
     }
 }

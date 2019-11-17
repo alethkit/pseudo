@@ -1,69 +1,40 @@
 use super::literal::Literal;
 use super::operator::{BinaryOperator, UnaryOperator};
-use super::token::Token;
 use super::types::{Type, Typed};
 
-//enum Expression {
-//    Literal(Literal),
-//    Binary {
-//        left: Box<Expression>,
-//        op: BinaryOperator,
-//        right: Box<Expression>,
-//    },
-//    Unary(UnaryOperator, Box<Expression>),
-//    //Assignment(Token, Box<Expression>),
-//    Grouping(Box<Expression>),
-//}
-
-//impl Typed for Expression {
-//    fn get_type(&self) -> Type {
-//        match self {
-//            Expression::Literal(lit) => lit.get_type(),
-//            Expression::Binary{left, op, right} => ,
-//            Expression::Grouping(*exp) => exp.get_type(),
-//        }
-//    }
-//}
-//
-
-pub trait Expression: Typed {
-    fn evaluate(self) -> Literal;
+#[derive(Debug)]
+pub enum Expression {
+    Literal(Literal),
+    Binary {
+        left: Box<Expression>,
+        op: BinaryOperator,
+        right: Box<Expression>,
+    },
+    Unary(UnaryOperator, Box<Expression>),
+    //Assignment(Token, Box<Expression>),
+    Grouping(Box<Expression>),
 }
 
-struct UnaryExpression<Exp: Expression> {
-    exp: Exp,
-    op: UnaryOperator,
-}
-
-impl<Exp: Expression> Typed for UnaryExpression<Exp> {
+impl Typed for Expression {
     fn get_type(&self) -> Type {
-        self.op.validate(&self.exp).unwrap() //Assume that the created value is sound
+        match self {
+            Expression::Literal(lit) => lit.get_type(),
+            Expression::Unary(op, exp) => op.validate(exp).unwrap(), //Assume that the created value is sound
+            Expression::Binary { left, op, right } => op.validate(left, right).unwrap(), // Assume that the created value is sound
+            Expression::Grouping(exp) => exp.get_type(),
+        }
     }
 }
 
-impl <Exp: Expression> Expression for UnaryExpression<Exp> {
-    fn evaluate(self) -> Literal {
-        self.op.evaluate(self.exp)
+impl Expression {
+    pub fn evaluate(self) -> Literal {
+        match self {
+            Expression::Literal(lit) => lit,
+            Expression::Binary{left, op, right} => op.evaluate(*left, *right),
+            Expression::Unary(op, exp) => op.evaluate(*exp),
+            Expression::Grouping(expr) => expr.evaluate()
+
+        }
     }
 }
 
-struct BinaryExpression<A: Expression, B: Expression> {
-    left: A,
-    op: BinaryOperator,
-    right: B,
-}
-
-impl<A: Expression, B: Expression> Typed for BinaryExpression<A, B> {
-    fn get_type(&self) -> Type {
-        self.op.validate(&self.left, &self.right).unwrap() // Assume that the created value is sound
-    }
-}
-
-struct Grouping<A: Expression> (A) ;
-
-impl <Exp: Expression> Typed for Grouping<Exp> {
-    fn get_type(&self) -> Type {
-       self.0.get_type() 
-    }
-
-}

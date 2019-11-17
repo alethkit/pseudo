@@ -1,27 +1,40 @@
 use super::expression::Expression;
 use super::literal::Literal;
-use super::types::Type;
+use super::token::Token;
+use super::types::{Type, TypeError, Typed};
 
+#[derive(Debug)]
 pub enum UnaryOperator {
     Not,
     Minus,
 }
 
+impl From<Token> for UnaryOperator {
+    fn from(t: Token) -> Self {
+        match t {
+            Token::Minus => Self::Minus,
+            Token::Not => Self::Not,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl UnaryOperator {
-    pub fn validate(&self, expr: &impl Expression) -> Option<Type> {
+    pub fn validate(&self, expr: &Expression) -> Result<Type, TypeError> {
+        use Type::*;
         match self {
             UnaryOperator::Not => match expr.get_type() {
-                Type::Boolean => Some(Type::Boolean),
-                _ => None,
+                Boolean => Ok(Boolean),
+                t => Err(TypeError::SingleExpected(Boolean, t)),
             },
             UnaryOperator::Minus => match expr.get_type() {
-                Type::Integer => Some(Type::Integer),
-                Type::Real => Some(Type::Real),
-                _ => None,
+                Integer => Ok(Integer),
+                Real => Ok(Real),
+                t => Err(TypeError::SingleExpectedOneOf(vec![Integer, Real], t)),
             },
         }
     }
-    pub fn evaluate(&self, expr: impl Expression) -> Literal {
+    pub fn evaluate(&self, expr: Expression) -> Literal {
         match self {
             UnaryOperator::Not => match expr.evaluate() {
                 Literal::Boolean(b) => Literal::Boolean(!b),
@@ -36,6 +49,7 @@ impl UnaryOperator {
     }
 }
 
+#[derive(Debug)]
 pub enum BinaryOperator {
     Or,
     And,
@@ -46,66 +60,105 @@ pub enum BinaryOperator {
     LessEqual,
     GreaterEqual,
     Add,
-    Minus,
+    Subtract,
     Multiply,
     Divide,
     IntDivide,
     Mod,
 }
 
+impl From<Token> for BinaryOperator {
+    fn from(t: Token) -> Self {
+        match t {
+            Token::Or => Self::Or,
+            Token::And => Self::And,
+            Token::DoubleEqual => Self::Equality,
+            Token::NotEqual => Self::Inequality,
+            Token::LessThan => Self::LessThan,
+            Token::GreaterThan => Self::GreaterThan,
+            Token::LessEqual => Self::LessEqual,
+            Token::GreaterEqual => Self::GreaterEqual,
+            Token::Plus => Self::Add,
+            Token::Minus => Self::Subtract,
+            Token::Star => Self::Multiply,
+            Token::Slash => Self::Divide,
+            Token::Div => Self::IntDivide,
+            Token::Mod => Self::Mod,
+            _ => unreachable!()
+        }
+    }
+}
+
 impl BinaryOperator {
-    pub fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-        // Although the expressions on both sides must be the same type,
-        // the option to allow for operations on different types is allowed, should
-        // preferences change in the future e.g adding reals and integers together.
+    pub fn validate(&self, expr1: &Expression, expr2: &Expression) -> Result<Type, TypeError> {
+        // Although the expressions on both sides must be the same type in the language,
+        // the implementation means that a binary expression and a literal are considered to be
+        // different types, even though they may evaluate to the same type in the language.
+        use Type::*;
         match self {
             // Although there only needs to be one level of match statements, there are two levels
             // to make the validation conditions for the code clearer.
             BinaryOperator::Or | BinaryOperator::And => {
                 match (expr1.get_type(), expr2.get_type()) {
-                    (Type::Boolean, Type::Boolean) => Some(Type::Boolean),
-                    _ => None,
+                    (Boolean, Boolean) => Ok(Boolean),
+                    (t1, t2) => Err(TypeError::DoubleExpected((Boolean, Boolean), (t1, t2))),
                 }
             }
             BinaryOperator::Equality | BinaryOperator::Inequality => {
+                let (type1, type2) = (expr1.get_type(), expr2.get_type());
                 if expr1.get_type() == expr2.get_type() {
-                    Some(Type::Boolean)
+                    Ok(Boolean)
                 } else {
-                    None
+                    Err(TypeError::UnequalTypes(type1, type2))
                 }
             }
             BinaryOperator::LessThan
             | BinaryOperator::GreaterThan
             | BinaryOperator::LessEqual
             | BinaryOperator::GreaterEqual => match (expr1.get_type(), expr2.get_type()) {
-                (Type::Integer, Type::Integer) | (Type::Real, Type::Real) => Some(Type::Boolean),
-                _ => None,
+                (Integer, Integer) | (Real, Real) => Ok(Boolean),
+                (t1, t2) => Err(TypeError::DoubleExpectedOneOf(
+                    vec![(Integer, Integer), (Real, Real)],
+                    (t1, t2),
+                )),
             },
             BinaryOperator::Add => match (expr1.get_type(), expr2.get_type()) {
-                (Type::Str, Type::Str) => Some(Type::Str),
-                (Type::Integer, Type::Integer) => Some(Type::Integer),
-                (Type::Real, Type::Real) => Some(Type::Real),
-                _ => None,
+                (Str, Str) => Ok(Str),
+                (Integer, Integer) => Ok(Integer),
+                (Real, Real) => Ok(Real),
+                (t1, t2) => Err(TypeError::DoubleExpectedOneOf(
+                    vec![(Str, Str), (Integer, Integer), (Real, Real)],
+                    (t1, t2),
+                )),
             },
-            BinaryOperator::Minus | BinaryOperator::Multiply | BinaryOperator::Mod => {
+            BinaryOperator::Subtract | BinaryOperator::Multiply | BinaryOperator::Mod => {
                 match (expr1.get_type(), expr2.get_type()) {
-                    (Type::Integer, Type::Integer) => Some(Type::Integer),
-                    (Type::Real, Type::Real) => Some(Type::Real),
-                    _ => None,
+                    (Integer, Integer) => Ok(Integer),
+                    (Real, Real) => Ok(Real),
+                    (t1, t2) => Err(TypeError::DoubleExpectedOneOf(
+                        vec![(Integer, Integer), (Real, Real)],
+                        (t1, t2),
+                    )),
                 }
             }
             BinaryOperator::Divide => match (expr1.get_type(), expr2.get_type()) {
-                (Type::Integer, Type::Integer) | (Type::Real, Type::Real) => Some(Type::Real),
-                _ => None,
+                (Integer, Integer) | (Real, Real) => Ok(Real),
+                (t1, t2) => Err(TypeError::DoubleExpectedOneOf(
+                    vec![(Integer, Integer), (Real, Real)],
+                    (t1, t2),
+                )),
             },
             BinaryOperator::IntDivide => match (expr1.get_type(), expr2.get_type()) {
-                (Type::Integer, Type::Integer) | (Type::Real, Type::Real) => Some(Type::Integer),
-                _ => None,
+                (Integer, Integer) | (Real, Real) => Ok(Integer),
+                (t1, t2) => Err(TypeError::DoubleExpectedOneOf(
+                    vec![(Integer, Integer), (Real, Real)],
+                    (t1, t2),
+                )),
             },
         }
     }
 
-    pub fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
+    pub fn evaluate(&self, expr1: Expression, expr2: Expression) -> Literal {
         match self {
             BinaryOperator::Equality => Literal::Boolean(expr1.evaluate() == expr2.evaluate()),
             BinaryOperator::Inequality => Literal::Boolean(expr1.evaluate() != expr2.evaluate()),
@@ -143,7 +196,7 @@ impl BinaryOperator {
                 (Literal::Real(a), Literal::Real(b)) => Literal::Real(a + b),
                 _ => unreachable!(),
             },
-            BinaryOperator::Minus => match (expr1.evaluate(), expr2.evaluate()) {
+            BinaryOperator::Subtract => match (expr1.evaluate(), expr2.evaluate()) {
                 (Literal::Integer(a), Literal::Integer(b)) => Literal::Integer(a - b),
                 (Literal::Real(a), Literal::Real(b)) => Literal::Real(a - b),
                 _ => unreachable!(),
@@ -171,176 +224,3 @@ impl BinaryOperator {
         }
     }
 }
-
-//pub trait UnaryOperator {
-//
-//    fn validate(&self, expr: &impl Expression) -> Option<Type>;
-//
-//    fn evaluate(&self, expr: impl Expression) -> Literal;
-//}
-//
-//pub trait BinaryOperator {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type>;
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal;
-//}
-//
-//struct Not {}
-//
-//impl UnaryOperator for Not {
-//    fn validate(&self, expr: &impl Expression) -> Option<Type> {
-//        if expr.get_type() == Type::Boolean {
-//            Some(Type::Boolean)
-//        } else {
-//            None
-//        }
-//    }
-//
-//    fn evaluate(&self, expr: impl Expression) -> Literal {
-//        match expr.evaluate() {
-//            Literal::Boolean(b) => Literal::Boolean(!b),
-//            _ => unreachable!(),
-//        }
-//    }
-//}
-//
-//struct Or {}
-//
-//impl BinaryOperator for Or {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        if expr1.get_type() == Type::Boolean && expr2.get_type() == Type::Boolean {
-//            Some(Type::Boolean)
-//        } else {
-//            None
-//        }
-//    }
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//        match (expr1.evaluate(), expr2.evaluate()) {
-//            (Literal::Boolean(a), Literal::Boolean(b)) => Literal::Boolean(a || b),
-//            _ => unreachable!(),
-//        }
-//    }
-//}
-//
-//struct And {}
-//
-//impl BinaryOperator for And {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        if expr1.get_type() == Type::Boolean && expr2.get_type() == Type::Boolean {
-//            Some(Type::Boolean)
-//        } else {
-//            None
-//        }
-//    }
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//        match (expr1.evaluate(), expr2.evaluate()) {
-//            (Literal::Boolean(a), Literal::Boolean(b)) => Literal::Boolean(a && b),
-//            _ => unreachable!(),
-//        }
-//    }
-//}
-//
-//struct Equality {}
-//
-//impl BinaryOperator for Equality {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        if expr1.get_type() == expr2.get_type() {
-//            Some(Type::Boolean)
-//        } else {
-//            None
-//        }
-//    }
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//        Literal::Boolean(expr1.evaluate() == expr2.evaluate())
-//    }
-//}
-//
-//struct Inequality {}
-//
-//impl BinaryOperator for Inequality {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        if expr1.get_type() == expr2.get_type() {
-//            Some(Type::Boolean)
-//        } else {
-//            None
-//        }
-//    }
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//        Literal::Boolean(expr1.evaluate() != expr2.evaluate())
-//    }
-//}
-//
-//struct LessThan {}
-//
-//impl BinaryOperator for LessThan {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        match (expr1.get_type(), expr2.get_type()) {
-//            (Type::Integer, Type::Integer) | (Type::Real, Type::Real) => Some(Type::Boolean),
-//            _ => None,
-//        }
-//    }
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//        match (expr1.evaluate(), expr2.evaluate()) {
-//            (Literal::Integer(int_a), Literal::Integer(int_b)) => Literal::Boolean(int_a < int_b),
-//            (Literal::Real(rl_a), Literal::Real(rl_b)) => Literal::Boolean(rl_a < rl_b),
-//            _ => unreachable!(),
-//        }
-//    }
-//}
-//
-//struct GreaterThan {}
-//
-//impl BinaryOperator for GreaterThan {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        match (expr1.get_type(), expr2.get_type()) {
-//            (Type::Integer, Type::Integer) | (Type::Real, Type::Real) => Some(Type::Boolean),
-//            _ => None,
-//        }
-//    }
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//        match (expr1.evaluate(), expr2.evaluate()) {
-//            (Literal::Integer(int_a), Literal::Integer(int_b)) => Literal::Boolean(int_a > int_b),
-//            (Literal::Real(rl_a), Literal::Real(rl_b)) => Literal::Boolean(rl_a > rl_b),
-//            _ => unreachable!(),
-//        }
-//    }
-//}
-//
-//struct LessEqual {}
-//
-//impl BinaryOperator for LessEqual {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        match (expr1.get_type(), expr2.get_type()) {
-//            (Type::Integer, Type::Integer) | (Type::Real, Type::Real) => Some(Type::Boolean),
-//            _ => None,
-//        }
-//    }
-//
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//        match (expr1.evaluate(), expr2.evaluate()) {
-//            (Literal::Integer(int_a), Literal::Integer(int_b)) => Literal::Boolean(int_a <= int_b),
-//            (Literal::Real(rl_a), Literal::Real(rl_b)) => Literal::Boolean(rl_a <= rl_b),
-//            _ => unreachable!(),
-//        }
-//    }
-//}
-//
-//struct GreaterEqual {}
-//
-//impl BinaryOperator for GreaterEqual {
-//    fn validate(&self, expr1: &impl Expression, expr2: &impl Expression) -> Option<Type> {
-//        match (expr1.get_type(), expr2.get_type()) {
-//            (Type::Integer, Type::Integer) | (Type::Real, Type::Real) => Some(Type::Boolean),
-//            _ => None,
-//        }
-//    }
-//    fn evaluate(&self, expr1: impl Expression, expr2: impl Expression) -> Literal {
-//
-//    }
-//}
