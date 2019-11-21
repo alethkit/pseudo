@@ -55,10 +55,21 @@ impl<'a> From<LocatableChars<'a>> for Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    fn skip_whitespace(&mut self) {
-        while let Some((c, _)) = self.chars.peek() {
+    fn skip_whitespace_and_comments(&mut self) {
+        while let Some((c, l)) = self.chars.peek() {
             if c.is_whitespace() {
                 self.chars.next();
+            } else if *c == '#' {
+                let current_line = l.line; 
+                while let Some((sub_c, sub_l)) = self.chars.peek() {
+                    if sub_l.line == current_line {
+                        self.chars.next();
+                    }
+                    else {
+                        return;
+                    }
+                }    
+
             } else {
                 return;
             }
@@ -113,6 +124,7 @@ impl<'a> Lexer<'a> {
             _ => Err(LexError::UnterminatedString),
         }
     }
+
 }
 
 impl Iterator for Lexer<'_> {
@@ -120,7 +132,7 @@ impl Iterator for Lexer<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         use LexError::*;
         use Token::*;
-        self.skip_whitespace();
+        self.skip_whitespace_and_comments();
         let (c, l) = *self.chars.peek()?;
         let val = match c {
             '+' | '*' | '/' | ':' | ',' | '[' | ']' | ';' | '(' | ')' => {
