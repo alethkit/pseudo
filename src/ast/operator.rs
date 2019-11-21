@@ -2,6 +2,9 @@ use super::expression::Expression;
 use super::literal::Literal;
 use super::token::Token;
 use super::types::{Type, TypeError, Typed};
+use crate::environment::EnvWrapper;
+
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum UnaryOperator {
@@ -34,15 +37,15 @@ impl UnaryOperator {
             },
         }
     }
-    pub fn evaluate(&self, expr: Expression) -> Literal {
+   pub fn evaluate(&self, expr: Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
         match self {
-            UnaryOperator::Not => match expr.evaluate() {
-                Literal::Boolean(b) => Literal::Boolean(!b),
+            UnaryOperator::Not => match expr.evaluate(env)? {
+                Literal::Boolean(b) => Ok(Literal::Boolean(!b)),
                 _ => unreachable!(),
             },
-            UnaryOperator::Minus => match expr.evaluate() {
-                Literal::Integer(int) => Literal::Integer(-int),
-                Literal::Real(rl) => Literal::Real(-rl),
+            UnaryOperator::Minus => match expr.evaluate(env)? {
+                Literal::Integer(int) => Ok(Literal::Integer(-int)),
+                Literal::Real(rl) => Ok(Literal::Real(-rl)),
                 _ => unreachable!(),
             },
         }
@@ -65,8 +68,15 @@ pub enum BinaryOperator {
     Divide,
     IntDivide,
     Mod,
+    Index
 }
 
+#[derive(Debug)]
+pub enum EvalError { // Implemented to avoid panics
+    DivisionByZero,
+    OutOfRange,
+    UndefinedVariable
+}
 impl From<Token> for BinaryOperator {
     fn from(t: Token) -> Self {
         match t {
@@ -84,6 +94,7 @@ impl From<Token> for BinaryOperator {
             Token::Slash => Self::Divide,
             Token::Div => Self::IntDivide,
             Token::Mod => Self::Mod,
+            Token::LeftBracket => Self::Index,
             _ => unreachable!()
         }
     }
@@ -155,72 +166,90 @@ impl BinaryOperator {
                     (t1, t2),
                 )),
             },
+            BinaryOperator::Index => match (expr1.get_type(), expr2.get_type()) {
+                (List(t), Integer) => Ok(*t),
+                (t1, t2) => Err(TypeError::DoubleExpected((List(Box::new(Any)), Integer),(t1,t2)))
+            }
         }
     }
 
-    pub fn evaluate(&self, expr1: Expression, expr2: Expression) -> Literal {
+    pub fn evaluate(self, expr1: Expression, expr2: Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
+        let (val1, val2) = (expr1.evaluate(Rc::clone(&env))?, expr2.evaluate(Rc::clone(&env))?);
         match self {
-            BinaryOperator::Equality => Literal::Boolean(expr1.evaluate() == expr2.evaluate()),
-            BinaryOperator::Inequality => Literal::Boolean(expr1.evaluate() != expr2.evaluate()),
-            BinaryOperator::Or => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Boolean(a), Literal::Boolean(b)) => Literal::Boolean(a || b),
+            BinaryOperator::Equality => Ok(Literal::Boolean(val1 == val2)),
+            BinaryOperator::Inequality => Ok(Literal::Boolean(val1 != val2)),
+            BinaryOperator::Or => match (val1, val2) {
+                (Literal::Boolean(a), Literal::Boolean(b)) => Ok(Literal::Boolean(a || b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::And => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Boolean(a), Literal::Boolean(b)) => Literal::Boolean(a && b),
+            BinaryOperator::And => match (val1, val2) {
+                (Literal::Boolean(a), Literal::Boolean(b)) => Ok(Literal::Boolean(a && b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::LessThan => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Boolean(a < b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Boolean(a < b),
+            BinaryOperator::LessThan => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Boolean(a < b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Boolean(a < b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::GreaterThan => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Boolean(a > b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Boolean(a > b),
+            BinaryOperator::GreaterThan => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Boolean(a > b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Boolean(a > b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::LessEqual => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Boolean(a <= b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Boolean(a <= b),
+            BinaryOperator::LessEqual => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Boolean(a <= b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Boolean(a <= b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::GreaterEqual => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Boolean(a >= b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Boolean(a >= b),
+            BinaryOperator::GreaterEqual => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Boolean(a >= b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Boolean(a >= b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::Add => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Str(a), Literal::Str(b)) => Literal::Str(a + &b),
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Integer(a + b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Real(a + b),
+            BinaryOperator::Add => match (val1, val2) {
+                (Literal::Str(a), Literal::Str(b)) => Ok(Literal::Str(a + &b)),
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a + b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a + b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::Subtract => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Integer(a - b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Real(a - b),
+            BinaryOperator::Subtract => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a - b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a - b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::Multiply => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Integer(a * b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Real(a * b),
+            BinaryOperator::Multiply => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a * b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a * b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::Divide => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Real((a / b) as f64),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Real(a / b),
+            BinaryOperator::Divide => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(0)) => Err(EvalError::DivisionByZero),
+                (Literal::Real(a), Literal::Real(0.0)) => Err(EvalError::DivisionByZero),
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Real((a / b) as f64)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a / b)),
                 _ => unreachable!(),
             },
-            BinaryOperator::IntDivide => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Integer(a / b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Integer((a / b) as i64),
+            BinaryOperator::IntDivide => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(0)) => Err(EvalError::DivisionByZero),
+                (Literal::Real(a), Literal::Real(0.0)) => Err(EvalError::DivisionByZero),
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a / b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Integer((a / b) as i64)),
                 _ => unreachable!(),
             },
-            BinaryOperator::Mod => match (expr1.evaluate(), expr2.evaluate()) {
-                (Literal::Integer(a), Literal::Integer(b)) => Literal::Integer(a % b),
-                (Literal::Real(a), Literal::Real(b)) => Literal::Real(a % b),
+            BinaryOperator::Mod => match (val1, val2) {
+                (Literal::Integer(a), Literal::Integer(0)) => Err(EvalError::DivisionByZero),
+                (Literal::Real(a), Literal::Real(0.0)) => Err(EvalError::DivisionByZero),
+                (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a % b)),
+                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a % b)),
                 _ => unreachable!(),
             },
+            BinaryOperator::Index => match (val1, val2) {
+                (Literal::List(a), Literal::Integer(b)) => match a.get(b as usize) {
+                    Some(v) => Ok(v.clone()),
+                    None => Err(EvalError::OutOfRange)
+                }
+                _ => unreachable!()
+            }
         }
     }
 }

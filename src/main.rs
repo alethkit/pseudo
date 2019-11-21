@@ -1,7 +1,10 @@
 mod ast;
+mod environment;
 mod error;
+mod interpreter;
 mod lexer;
 mod parser;
+use interpreter::Interpreter;
 use lexer::{Lexer, LocatableChars};
 use parser::Parser;
 use std::io;
@@ -17,14 +20,17 @@ fn main() {
     let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(|(r, l)| r.is_ok());
     println!("lexing complete");
     if errors.is_empty() {
-        println!("Tokens: {:#?}", tokens);
+        // println!("Tokens: {:#?}", tokens);
         let mut pars = Parser::from(tokens.into_iter().map(|(r, l)| (r.unwrap(), l)));
-        match pars.expression() {
-            Ok(exp) => {
-                println!("Expression: {:#?}", exp);
-                println!("Value: {:#?}",exp.0.evaluate() );
-            },
-            Err(e) => println!("Error: {:#?}", e)
+        let program: Result<Vec<_>, _> = pars.collect();
+        match program {
+            Ok(stmts) => {
+                let inter = Interpreter::new();
+                if let Err(e) = inter.execute(stmts.into_iter().map(|c| c.0).collect()) {
+                    println!("Runtime error: {:#?}", e);
+                }
+            }
+            Err(e) => println!("Error: {:#?}", e),
         }
     } else {
         println!("Errors: {:#?}", errors);
