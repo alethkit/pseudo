@@ -1,11 +1,12 @@
+use super::ast::literal::Literal;
 use super::ast::statement::Statement;
-use super::environment::Environment;
+use super::environment::{EnvWrapper, Environment};
 use super::error::runtime::RuntimeError;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Interpreter {
-    env: Rc<RefCell<Environment>>,
+    env: EnvWrapper,
 }
 
 impl Interpreter {
@@ -17,30 +18,64 @@ impl Interpreter {
 
     pub fn execute(&self, statements: Vec<Statement>) -> Result<(), RuntimeError> {
         for statement in statements {
-            self.execute_statement(statement)?;
+            self.execute_statement(statement, Rc::clone(&self.env))?;
         }
         Ok(())
     }
 
-    fn execute_statement(&self, statement: Statement) -> Result<(), RuntimeError> {
+    fn execute_statement(&self, statement: Statement, env: EnvWrapper) -> Result<(), RuntimeError> {
         match statement {
             Statement::Expression(expr) => {
-                let val = expr.evaluate(Rc::clone(&self.env))?;
+                let val = expr.evaluate(env)?;
                 println!("{:#?}", val);
                 Ok(())
             }
             Statement::ConstDeclaraction(name, expr) => {
-                let val = expr.evaluate(Rc::clone(&self.env))?;
+                let val = expr.evaluate(Rc::clone(&env))?;
                 println!("Declare constant {:#?} with {:#?}", name, val);
-                self.env.borrow_mut().define(name, val);
+                env.borrow_mut().define(name, val);
                 Ok(())
             }
             Statement::VarDeclaration(name, expr) => {
-                let val = expr.evaluate(Rc::clone(&self.env))?;
+                let val = expr.evaluate(Rc::clone(&env))?;
                 println!("Declare variable {:#?} with {:#?}", name, val);
-                self.env.borrow_mut().define(name, val);
+                env.borrow_mut().define(name, val);
                 Ok(())
             }
+            Statement::IfStatement {
+                condition,
+                body,
+                alternative,
+            } => match condition.evaluate(Rc::clone(&env))? {
+                Literal::Boolean(b) => {
+                    if b {
+                        println!("true");
+                        match *body {
+                            Statement::Block(list) => self.execute_block(list, env),
+                            _ => unreachable!("if statement always has block")
+                        }
+                    } else {
+                        println!("false");
+                        match alternative {
+                            Some(alt) => match *alt {
+                                Statement::Block(list) => self.execute_block(list, env),
+                            _ => unreachable!("if statement always has block")
+                            },
+                            None => Ok(())
+                        }
+                    }},
+                _ => unreachable!(),
+            },
+            Statement::Block(block) => {
+                self.execute_block(block, Rc::new(RefCell::new(Environment::new())))
+            }
         }
+    }
+
+    fn execute_block(&self, block: Vec<Statement>, env: EnvWrapper) -> Result<(), RuntimeError> {
+        for statement in block {
+            self.execute_statement(statement, Rc::clone(&env))?;
+        }
+        Ok(())
     }
 }

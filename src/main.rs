@@ -20,7 +20,7 @@ fn main() {
     let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(|(r, l)| r.is_ok());
     println!("lexing complete");
     if errors.is_empty() {
-        // println!("Tokens: {:#?}", tokens);
+         println!("Tokens: {:#?}", tokens);
         let mut pars = Parser::from(tokens.into_iter().map(|(r, l)| (r.unwrap(), l)));
         let program: Result<Vec<_>, _> = pars.collect();
         match program {

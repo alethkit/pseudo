@@ -307,6 +307,28 @@ where
         }
     }
 
+    fn block_statement(
+        &mut self,
+        end_tok: &[Token],
+        fallback: fn(&mut Self) -> LocResult<Statement>,
+    ) -> LocResult<Statement> {
+        let mut block = Vec::new();
+        while let Some((kind, loc)) = self.tokens.peek() {
+            println!("token: {:#?}", kind);
+            if end_tok
+                .iter()
+                .any(|t| discriminant(t) == discriminant(kind))
+            {
+                // End token kept in stream
+                return Ok((Statement::Block(block), *loc));
+            } else {
+                let stmt = fallback(self)?;
+                block.push(stmt.0)
+            }
+        }
+        Err(Parser::<T>::UnexpectedEOF)
+    }
+
     fn type_hint(&mut self) -> LocResult<Type> {
         // What allows us to identify type errors
         match self.tokens.next().ok_or(Parser::<T>::UnexpectedEOF)? {
@@ -337,6 +359,61 @@ where
             )),
         }
     }
+
+    fn if_statement(&mut self) -> LocResult<Statement> {
+        let (condition, loc) = self.expression()?;
+        let cond_type = condition.get_type();
+        if cond_type != Type::Boolean {
+            return Err((
+                ParserError::Typing(TypeError::SingleExpected(Type::Boolean, cond_type)),
+                loc,
+            ));
+        }
+        //println!("expr parsed");
+        self.consume(Token::Then)?;
+        let (body, _) = self.block_statement(&[Token::Else, Token::EndIf], Parser::statement)?;
+        let alternative =
+            if let (Token::Else, _) = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
+                println!("boop");
+                self.tokens.next();
+                Some(self.block_statement(&[Token::EndIf], Parser::statement)?)
+            } else {
+                None
+            };
+        self.consume(Token::EndIf)?;
+        Ok((
+            Statement::IfStatement {
+                condition,
+                body: Box::new(body),
+                alternative: alternative.map(|t| t.0).map(Box::new),
+            },
+            loc,
+        ))
+    }
+
+    fn statement(&mut self) -> LocResult<Statement> {
+        match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
+            (Token::If, _) => {
+                self.tokens.next();
+                self.if_statement()
+            }
+            _ => self.expression_statement(),
+        }
+    }
+
+    fn declaration(&mut self) -> LocResult<Statement> {
+        match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
+            (Token::Var, _) => {
+                self.tokens.next();
+                self.var_declaration()
+            }
+            (Token::Constant, _) => {
+                self.tokens.next();
+                self.constant_declaration()
+            }
+            _ => self.statement(),
+        }
+    }
 }
 
 impl<T> Iterator for Parser<T>
@@ -346,16 +423,7 @@ where
     type Item = LocResult<Statement>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.tokens.peek()? {
-            (Token::Var, _) => {
-                self.tokens.next();
-                Some(self.var_declaration())
-            }
-            (Token::Constant, _) => {
-                self.tokens.next();
-                Some(self.constant_declaration())
-            }
-            _ => Some(self.expression_statement()),
-        }
+        self.tokens.peek()?; // Checks if there are any more tokens. If there are none, returns none.
+        Some(self.declaration())
     }
 }
