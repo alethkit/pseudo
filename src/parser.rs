@@ -311,7 +311,7 @@ where
         &mut self,
         end_tok: &[Token],
         fallback: fn(&mut Self) -> LocResult<Statement>,
-    ) -> LocResult<Statement> {
+    ) -> LocResult<Vec<Statement>> {
         let mut block = Vec::new();
         while let Some((kind, loc)) = self.tokens.peek() {
             println!("token: {:#?}", kind);
@@ -320,7 +320,7 @@ where
                 .any(|t| discriminant(t) == discriminant(kind))
             {
                 // End token kept in stream
-                return Ok((Statement::Block(block), *loc));
+                return Ok((block, *loc));
             } else {
                 let stmt = fallback(self)?;
                 block.push(stmt.0)
@@ -382,10 +382,10 @@ where
             };
         self.consume(Token::EndIf)?;
         Ok((
-            Statement::IfStatement {
+            Statement::If {
                 condition,
-                body: Box::new(body),
-                alternative: alternative.map(|t| t.0).map(Box::new),
+                body,
+                alternative: alternative.map(|t| t.0),
             },
             loc,
         ))

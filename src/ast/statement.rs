@@ -5,10 +5,12 @@ pub enum Statement {
     Expression(Expression),
     VarDeclaration(String, Expression),
     ConstDeclaraction(String, Expression),
-    IfStatement {
+    If {
         condition: Expression,
-        body: Box<Statement>,
-        alternative: Option<Box<Statement>>
+        body: Vec<Statement>,
+        alternative: Option<Vec<Statement>>
     },
-    Block(Vec<Statement>)
+   // While {
+    //    condition: Expression
+   // },
 }

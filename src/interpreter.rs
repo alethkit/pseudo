@@ -42,7 +42,7 @@ impl Interpreter {
                 env.borrow_mut().define(name, val);
                 Ok(())
             }
-            Statement::IfStatement {
+            Statement::If {
                 condition,
                 body,
                 alternative,
@@ -50,25 +50,17 @@ impl Interpreter {
                 Literal::Boolean(b) => {
                     if b {
                         println!("true");
-                        match *body {
-                            Statement::Block(list) => self.execute_block(list, env),
-                            _ => unreachable!("if statement always has block")
-                        }
+                        self.execute_block(body, env)
                     } else {
                         println!("false");
                         match alternative {
-                            Some(alt) => match *alt {
-                                Statement::Block(list) => self.execute_block(list, env),
-                            _ => unreachable!("if statement always has block")
-                            },
-                            None => Ok(())
+                            Some(alt) =>  self.execute_block(alt, env),
+                            None => Ok(()),
                         }
-                    }},
+                    }
+                }
                 _ => unreachable!(),
             },
-            Statement::Block(block) => {
-                self.execute_block(block, Rc::new(RefCell::new(Environment::new())))
-            }
         }
     }
 
