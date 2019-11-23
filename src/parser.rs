@@ -391,11 +391,30 @@ where
         ))
     }
 
+    fn while_statement(&mut self) -> LocResult<Statement> {
+        let (condition, loc) = self.expression()?;
+        let cond_type = condition.get_type();
+        if cond_type != Type::Boolean {
+            return Err((
+                ParserError::Typing(TypeError::SingleExpected(Type::Boolean, cond_type)),
+                loc,
+            ));
+        }
+        self.consume(Token::Do)?;
+        let (body, _) = self.block_statement(&[Token::EndWhile], Parser::statement)?;
+        self.consume(Token::EndWhile)?;
+        Ok((Statement::While { condition, body }, loc))
+    }
+
     fn statement(&mut self) -> LocResult<Statement> {
         match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
             (Token::If, _) => {
                 self.tokens.next();
                 self.if_statement()
+            }
+            (Token::While, _) => {
+                self.tokens.next();
+                self.while_statement()
             }
             _ => self.expression_statement(),
         }

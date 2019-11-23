@@ -37,7 +37,7 @@ impl UnaryOperator {
             },
         }
     }
-   pub fn evaluate(&self, expr: Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
+   pub fn evaluate(&self, expr: &Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
         match self {
             UnaryOperator::Not => match expr.evaluate(env)? {
                 Literal::Boolean(b) => Ok(Literal::Boolean(!b)),
@@ -173,7 +173,7 @@ impl BinaryOperator {
         }
     }
 
-    pub fn evaluate(self, expr1: Expression, expr2: Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
+    pub fn evaluate(&self, expr1: &Expression, expr2: &Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
         let (val1, val2) = (expr1.evaluate(Rc::clone(&env))?, expr2.evaluate(Rc::clone(&env))?);
         match self {
             BinaryOperator::Equality => Ok(Literal::Boolean(val1 == val2)),

@@ -1,4 +1,4 @@
-use super::expression::Expression;
+    use super::expression::Expression;
 
 #[derive(Debug)]
 pub enum Statement {
@@ -10,7 +10,8 @@ pub enum Statement {
         body: Vec<Statement>,
         alternative: Option<Vec<Statement>>
     },
-   // While {
-    //    condition: Expression
-   // },
+    While {
+        condition: Expression,
+        body: Vec<Statement>
+    },
 }

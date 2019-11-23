@@ -18,12 +18,16 @@ impl Interpreter {
 
     pub fn execute(&self, statements: Vec<Statement>) -> Result<(), RuntimeError> {
         for statement in statements {
-            self.execute_statement(statement, Rc::clone(&self.env))?;
+            self.execute_statement(&statement, Rc::clone(&self.env))?;
         }
         Ok(())
     }
 
-    fn execute_statement(&self, statement: Statement, env: EnvWrapper) -> Result<(), RuntimeError> {
+    fn execute_statement(
+        &self,
+        statement: &Statement,
+        env: EnvWrapper,
+    ) -> Result<(), RuntimeError> {
         match statement {
             Statement::Expression(expr) => {
                 let val = expr.evaluate(env)?;
@@ -33,13 +37,13 @@ impl Interpreter {
             Statement::ConstDeclaraction(name, expr) => {
                 let val = expr.evaluate(Rc::clone(&env))?;
                 println!("Declare constant {:#?} with {:#?}", name, val);
-                env.borrow_mut().define(name, val);
+                env.borrow_mut().define(name.to_string(), val);
                 Ok(())
             }
             Statement::VarDeclaration(name, expr) => {
                 let val = expr.evaluate(Rc::clone(&env))?;
                 println!("Declare variable {:#?} with {:#?}", name, val);
-                env.borrow_mut().define(name, val);
+                env.borrow_mut().define(name.to_string(), val);
                 Ok(())
             }
             Statement::If {
@@ -50,21 +54,31 @@ impl Interpreter {
                 Literal::Boolean(b) => {
                     if b {
                         println!("true");
-                        self.execute_block(body, env)
+                        self.execute_block(&body, env)
                     } else {
                         println!("false");
                         match alternative {
-                            Some(alt) =>  self.execute_block(alt, env),
+                            Some(alt) => self.execute_block(&alt, env),
                             None => Ok(()),
                         }
                     }
                 }
                 _ => unreachable!(),
             },
+            Statement::While { condition, body } => {
+                while let Literal::Boolean(b) = condition.evaluate(Rc::clone(&env))? {
+                    if b {
+                        self.execute_block(&body, Rc::clone(&env))?;
+                    } else {
+                        return Ok(());
+                    }
+                }
+                unreachable!()
+            }
         }
     }
 
-    fn execute_block(&self, block: Vec<Statement>, env: EnvWrapper) -> Result<(), RuntimeError> {
+    fn execute_block(&self, block: &Vec<Statement>, env: EnvWrapper) -> Result<(), RuntimeError> {
         for statement in block {
             self.execute_statement(statement, Rc::clone(&env))?;
         }

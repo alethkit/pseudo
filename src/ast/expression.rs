@@ -35,11 +35,11 @@ impl Typed for Expression {
 }
 
 impl Expression {
-    pub fn evaluate(self, env: EnvWrapper) -> Result<Literal, EvalError> {
+    pub fn evaluate(&self, env: EnvWrapper) -> Result<Literal, EvalError> {
         match self {
-            Expression::Literal(lit) => Ok(lit),
-            Expression::Binary { left, op, right } => op.evaluate(*left, *right, env),
-            Expression::Unary(op, exp) => op.evaluate(*exp, env),
+            Expression::Literal(lit) => Ok(lit.clone()),
+            Expression::Binary { left, op, right } => op.evaluate(left, right, env),
+            Expression::Unary(op, exp) => op.evaluate(exp, env),
             Expression::Grouping(expr) => expr.evaluate(env),
             Expression::Variable(name, _) | Expression::Constant(name, _) => {
                 Ok(env.borrow().get(&name))
