@@ -61,7 +61,7 @@ impl<'a> Lexer<'a> {
                 self.chars.next();
             } else if *c == '#' {
                 let current_line = l.line; 
-                while let Some((sub_c, sub_l)) = self.chars.peek() {
+                while let Some((_sub_c, sub_l)) = self.chars.peek() {
                     if sub_l.line == current_line {
                         self.chars.next();
                     }

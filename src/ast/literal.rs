@@ -10,6 +10,23 @@ pub enum Literal {
     List(Vec<Literal>)
 }
 
+impl From<Literal> for bool { // Should only be called when known if integer
+    fn from(lit: Literal) -> Self { 
+        match lit {
+            Literal::Boolean(val) => val,
+            _ => unreachable!() 
+        }
+    }
+}
+impl From<Literal> for i64 { // Should only be called when known if integer
+    fn from(lit: Literal) -> Self { 
+        match lit {
+            Literal::Integer(val) => val,
+            _ => unreachable!() 
+        }
+    }
+}
+
 impl Typed for Literal {
 
     fn get_type(&self) -> Type  {

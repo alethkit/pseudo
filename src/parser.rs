@@ -4,6 +4,7 @@ use super::ast::{
     operator::{BinaryOperator, EvalError, UnaryOperator},
     statement::Statement,
     token::Token,
+    literal::Literal,
     types::{Type, TypeError, Typed},
 };
 use std::collections::HashMap;
@@ -16,7 +17,7 @@ where
     T: Iterator<Item = (Token, Location)>,
 {
     tokens: Peekable<T>,
-    type_scope: TypeScope,
+    type_scope: TypeScope, // Used to keep track of variables and their types for variable expressions.
 }
 
 impl<T> From<T> for Parser<T>
@@ -70,7 +71,7 @@ macro_rules! recursive_descent {
                 $($ops) | + => {
                     let (op_token, loc) = $self.tokens.next().unwrap(); //Safe to unwrap: peek ensures a value exists
                     let right = $self.$fallback()?.0;
-                    $add;
+                    $add
                     let op = BinaryOperator::from(op_token);
                     println!("Left: {:#?}", expr);
                     println!("Right: {:#?}", right);
@@ -112,6 +113,23 @@ where
         }
     }
 
+    fn check_type(
+        &self,
+        to_check: &impl Typed,
+        type_to_check: Type,
+        loc: Location,
+    ) -> Result<(), (ParserError, Location)> {
+        let type_of_checkee = to_check.get_type();
+        if type_of_checkee != type_to_check {
+            Err((
+                ParserError::Typing(TypeError::SingleExpected(type_to_check, type_of_checkee)),
+                loc,
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn expression(&mut self) -> LocResult<Expression> {
         self.assignment()
     }
@@ -124,16 +142,10 @@ where
                 let (val, _) = self.assignment()?;
                 match expr {
                     Expression::Variable(name, t) => {
-                        let val_type = val.get_type();
-                        if val.get_type() == t {
-                            Ok((Expression::Assignment(name, Box::new(val)), loc2))
-                        } else {
-                            Err((
-                                ParserError::Typing(TypeError::SingleExpected(t, val_type)),
-                                loc2,
-                            ))
-                        }
+                        self.check_type(&val, t, loc2)?;
+                        Ok((Expression::Assignment(name, Box::new(val)), loc2))
                     }
+
                     Expression::Constant(_, _) => Err((ParserError::ConstantsAreConstant, loc2)),
                     _ => Err((ParserError::InvalidAssignmentTarget, loc2)),
                 }
@@ -274,37 +286,23 @@ where
         let (var_val, _) = self.expression()?;
         self.consume(Token::SemiColon)?;
         println!("{:#?}", var_val);
-        let val_type = var_val.get_type();
-        if val_type == var_type {
-            self.type_scope.insert(var_name.clone(), var_type);
-            Ok((Statement::VarDeclaration(var_name, var_val), loc))
-        } else {
-            Err((
-                ParserError::Typing(TypeError::SingleExpected(var_type, val_type)),
-                loc,
-            ))
-        }
+        self.check_type(&var_val, var_type.clone(), loc)?;
+        self.type_scope.insert(var_name.clone(), var_type);
+        Ok((Statement::VarDeclaration(var_name, var_val), loc))
     }
     fn constant_declaration(&mut self) -> LocResult<Statement> {
         self.consume(Token::Colon)?;
         let (const_type, _) = self.type_hint()?;
-        let (const_name, loc) = match self.consume(Token::ConstIdentifier("".to_string()))? {
+        let (const_name, loc) = match self.consume(Token::ConstIdentifier(String::new()))? {
             (Token::ConstIdentifier(const_name), loc) => (const_name, loc),
             _ => unreachable!("consume should have checked type"),
         };
         self.consume(Token::Equals)?;
         let (const_val, _) = self.expression()?;
         self.consume(Token::SemiColon)?;
-        let val_type = const_val.get_type();
-        if val_type == const_type {
-            self.type_scope.insert(const_name.clone(), const_type);
-            Ok((Statement::ConstDeclaraction(const_name, const_val), loc))
-        } else {
-            Err((
-                ParserError::Typing(TypeError::SingleExpected(const_type, val_type)),
-                loc,
-            ))
-        }
+        self.check_type(&const_val, const_type.clone(), loc)?;
+        self.type_scope.insert(const_name.clone(), const_type); // Scope allows us to keep track of current variables and their types.
+        Ok((Statement::ConstDeclaraction(const_name, const_val), loc))
     }
 
     fn block_statement(
@@ -362,19 +360,11 @@ where
 
     fn if_statement(&mut self) -> LocResult<Statement> {
         let (condition, loc) = self.expression()?;
-        let cond_type = condition.get_type();
-        if cond_type != Type::Boolean {
-            return Err((
-                ParserError::Typing(TypeError::SingleExpected(Type::Boolean, cond_type)),
-                loc,
-            ));
-        }
-        //println!("expr parsed");
+        self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Then)?;
         let (body, _) = self.block_statement(&[Token::Else, Token::EndIf], Parser::statement)?;
         let alternative =
             if let (Token::Else, _) = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
-                println!("boop");
                 self.tokens.next();
                 Some(self.block_statement(&[Token::EndIf], Parser::statement)?)
             } else {
@@ -393,17 +383,48 @@ where
 
     fn while_statement(&mut self) -> LocResult<Statement> {
         let (condition, loc) = self.expression()?;
-        let cond_type = condition.get_type();
-        if cond_type != Type::Boolean {
-            return Err((
-                ParserError::Typing(TypeError::SingleExpected(Type::Boolean, cond_type)),
-                loc,
-            ));
-        }
+        self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Do)?;
         let (body, _) = self.block_statement(&[Token::EndWhile], Parser::statement)?;
         self.consume(Token::EndWhile)?;
         Ok((Statement::While { condition, body }, loc))
+    }
+
+    fn do_while_statement(&mut self) -> LocResult<Statement> {
+        let (body, _) = self.block_statement(&[Token::While], Parser::statement)?;
+        self.consume(Token::While)?;
+        let (condition, loc) = self.expression()?;
+        self.check_type(&condition, Type::Boolean, loc)?;
+        self.consume(Token::EndDoWhile)?;
+        Ok((Statement::DoWhile { condition, body }, loc))
+    }
+
+    fn for_statement(&mut self) -> LocResult<Statement> {
+        let (loop_var, loc) = match self.consume(Token::VarIdentifier(String::new()))? {
+            (Token::VarIdentifier(loop_var), loc) => (loop_var, loc),
+            _ => unreachable!("consume checks type"),
+        };
+        self.consume(Token::Equals)?;
+        let (initial_val, val_loc) = self.expression()?;
+        self.check_type(&initial_val, Type::Integer, val_loc)?;
+        self.consume(Token::To)?;
+        let (end_val, end_loc) = self.expression()?;
+        self.check_type(&end_val, Type::Integer, end_loc)?;
+        let step_val = {
+            if let (Token::Step, step_loc) = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
+                self.tokens.next();
+                let (val, loc) = self.expression()?;
+                self.check_type(&val, Type::Integer, loc)?;
+                val
+            }
+            else {Expression::Literal(Literal::Integer(1))}
+        };
+        self.consume(Token::Do)?;
+        self.type_scope.insert(loop_var.clone(), Type::Integer); // Adds loop variable to scope temporarily.
+        let (body, _) = self.block_statement(&[Token::EndFor], Parser::statement)?;
+        self.consume(Token::EndFor)?;
+        self.type_scope.remove(&loop_var);
+        Ok((Statement::For {loop_var, initial_val, end_val, step_val, body},loc))
     }
 
     fn statement(&mut self) -> LocResult<Statement> {
@@ -415,6 +436,14 @@ where
             (Token::While, _) => {
                 self.tokens.next();
                 self.while_statement()
+            }
+            (Token::Do, _) => {
+                self.tokens.next();
+                self.do_while_statement()
+            },
+            (Token::For, _) => {
+                self.tokens.next();
+                self.for_statement()
             }
             _ => self.expression_statement(),
         }

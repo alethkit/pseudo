@@ -15,10 +15,10 @@ impl fmt::Display for LexError {
             f,
             "{}",
             match self {
-                UnterminatedString => "Unterminated string. Did you forget to place a \"?",
-                UnterminatedChar => "Unterimated character. Did you forget to place a '?",
-                UnterminatedReal => "You have not input a decimal part after the decimal point.",
-                InvalidCharacter => "You have entered a character that cannot be recognised.",
+                _UnterminatedString => "Unterminated string. Did you forget to place a \"?",
+                _UnterminatedChar => "Unterimated character. Did you forget to place a '?",
+                _UnterminatedReal => "You have not input a decimal part after the decimal point.",
+                _InvalidCharacter => "You have entered a character that cannot be recognised.",
             }
         )
     }

@@ -66,14 +66,51 @@ impl Interpreter {
                 _ => unreachable!(),
             },
             Statement::While { condition, body } => {
-                while let Literal::Boolean(b) = condition.evaluate(Rc::clone(&env))? {
-                    if b {
-                        self.execute_block(&body, Rc::clone(&env))?;
-                    } else {
-                        return Ok(());
-                    }
+                while let true = bool::from(condition.evaluate(Rc::clone(&env))?) {
+                    self.execute_block(&body, Rc::clone(&env))?;
                 }
-                unreachable!()
+                Ok(())
+            }
+            Statement::DoWhile { condition, body } => {
+                self.execute_block(&body, Rc::clone(&env))?;
+                while let true = bool::from(condition.evaluate(Rc::clone(&env))?) {
+                    self.execute_block(&body, Rc::clone(&env))?;
+                }
+                Ok(())
+            }
+            Statement::For {
+                loop_var,
+                initial_val,
+                end_val,
+                step_val,
+                body,
+            } => {
+                let start_val = i64::from(initial_val.evaluate(Rc::clone(&env))?);
+                let end_val = i64::from(end_val.evaluate(Rc::clone(&env))?);
+                let step_val = i64::from(step_val.evaluate(Rc::clone(&env))?);
+                if start_val >= end_val && step_val > 0 || start_val <= end_val && step_val < 0 {
+                    return Err(RuntimeError::InvalidRangeBound);
+                }
+                let loop_var_env = Rc::new(RefCell::new(Environment::from_enclosing(env)));
+                let range: Vec<_> = match step_val {
+                    step if step_val > 0 => {
+                        Ok((start_val..=end_val).step_by(step as usize).collect())
+                    }
+                    step if step_val < 0 => Ok(
+                        (end_val..=start_val)
+                            .rev()
+                            .step_by(-step as usize)
+                            .collect()
+                    ),
+                    _ => Err(RuntimeError::RangeStepCannotBeZero),
+                }?;
+                for loop_val in range.into_iter() {
+                    loop_var_env
+                        .borrow_mut()
+                        .define(loop_var.to_string(), Literal::Integer(loop_val));
+                    self.execute_block(body, Rc::clone(&loop_var_env))?;
+                }
+                Ok(())
             }
         }
     }

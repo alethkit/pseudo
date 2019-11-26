@@ -6,7 +6,7 @@ use crate::ast::operator::EvalError;
 
 pub struct Environment {
     values: HashMap<String, Literal>,
-    parent: Option<Rc<RefCell<Environment>>>,
+    parent: Option<EnvWrapper>,
 }
 
 pub type EnvWrapper = Rc<RefCell<Environment>>;
@@ -19,7 +19,7 @@ impl Environment {
         }
     }
 
-    pub fn from_enclosing(env: Rc<RefCell<Environment>>) -> Self {
+    pub fn from_enclosing(env: EnvWrapper) -> Self {
         Environment {
             values: HashMap::new(),
             parent: Some(env)
