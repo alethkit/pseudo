@@ -9,6 +9,13 @@ pub struct Environment {
     parent: Option<EnvWrapper>,
 }
 
+#[derive(PartialEq, Eq, Hash)]
+enum Identifier {
+	Variable(String),
+	Index(Box<Identifier>, usize)
+}
+
+
 pub type EnvWrapper = Rc<RefCell<Environment>>;
 
 impl Environment {
