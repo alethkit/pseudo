@@ -52,7 +52,7 @@ impl UnaryOperator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum BinaryOperator {
     Or,
     And,

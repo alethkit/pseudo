@@ -1,20 +1,44 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
+use crate::ast::expression::ExprIdentifier;
 use crate::ast::literal::Literal;
 use crate::ast::operator::EvalError;
+use std::cell::{RefCell, RefMut};
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::rc::Rc;
 
 pub struct Environment {
     values: HashMap<String, Literal>,
     parent: Option<EnvWrapper>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
-enum Identifier {
-	Variable(String),
-	Index(Box<Identifier>, usize)
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub enum Identifier {
+    Variable(String),
+    Index(Box<Identifier>, usize),
 }
 
+impl From<String> for Identifier {
+    fn from(value: String) -> Self {
+        Self::Variable(value)
+    }
+}
+
+impl TryFrom<(&ExprIdentifier, EnvWrapper)> for Identifier {
+    type Error = EvalError;
+
+    fn try_from((value, env): (&ExprIdentifier, EnvWrapper)) -> Result<Self, Self::Error> {
+        match value {
+            ExprIdentifier::Variable(name) => Ok(Self::Variable(name.to_string())),
+            ExprIdentifier::Index(ident, index) => match index.evaluate(Rc::clone(&env))? {
+                Literal::Integer(int) => Ok(Self::Index(
+                    Self::try_from((&**ident, env)).map(Box::new)?,
+                    int as usize,
+                )),
+                _ => unreachable!("Already type checked"),
+            },
+        }
+    }
+}
 
 pub type EnvWrapper = Rc<RefCell<Environment>>;
 
@@ -29,7 +53,7 @@ impl Environment {
     pub fn from_enclosing(env: EnvWrapper) -> Self {
         Environment {
             values: HashMap::new(),
-            parent: Some(env)
+            parent: Some(env),
         }
     }
 
@@ -37,29 +61,47 @@ impl Environment {
         self.values.insert(name, value);
     }
 
-    pub fn get(&self, name: &str) -> Literal {
-        match self.values.get(name) {
-            Some(v) => v.clone(),
-            None => match &self.parent {
-                Some(p) => p.borrow().get(name),
-                None => unreachable!()
-            }
+    pub fn get(&self, ident: &Identifier) -> Result<Literal, EvalError> {
+        match ident {
+            Identifier::Variable(name) => match self.values.get(name) {
+                Some(v) => Ok(v.clone()),
+                None => self
+                    .parent
+                    .as_ref()
+                    .ok_or(EvalError::UndefinedVariable)?
+                    .borrow()
+                    .get(ident),
+            },
+            Identifier::Index(id, index) => match self.get(id)? {
+                Literal::List(v) => v.get(*index).ok_or(EvalError::OutOfRange).map(Clone::clone),
+                _ => unreachable!("Index should have been type checked on list"),
+            },
         }
     }
 
-    pub fn assign(&mut self, name: &str, value: Literal) -> Result<Literal, EvalError> {
-        if self.values.contains_key(name) {
-            self.values.insert(name.to_string(), value.clone());
-            Ok(value)
-        }
-        else {
-            match &self.parent {
-                Some(p) => p.borrow_mut().assign(name, value),
-                None => Err(EvalError::UndefinedVariable)
-            }
+    pub fn assign(&mut self, ident: &Identifier, value: Literal) -> Result<Literal, EvalError> {
+        match ident {
+            Identifier::Variable(name) => match self.values.get_mut(name) {
+                Some(v) => {
+                    *v = value.clone();
+                    Ok(value)
+                }
+                None => match &self.parent {
+                    Some(p) => p.borrow_mut().assign(ident, value), 
+                    None => unreachable!("Type scope"),
+                },
+            },
+            Identifier::Index(id, index) =>  {
+		let prospective_list = self.get(id)?;
+                match prospective_list {
+                    Literal::List(mut list) => {
+                        *list.get_mut(*index).ok_or(EvalError::OutOfRange)? = value.clone();
+                        self.assign(id, Literal::List(list));
+                        Ok(value)
+                    },
+                    _ => unreachable!("Index should have been type checked on list"),
+                }
+            },
         }
     }
-
-
-
 }

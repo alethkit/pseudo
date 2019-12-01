@@ -1,8 +1,15 @@
 use super::literal::Literal;
 use super::operator::{BinaryOperator, EvalError, UnaryOperator};
 use super::types::{Type, Typed};
-use crate::environment::EnvWrapper;
+use crate::environment::{EnvWrapper, Identifier};
 use std::rc::Rc;
+use std::convert::TryFrom;
+
+#[derive(Debug)]
+pub enum ExprIdentifier {
+    Variable(String),
+    Index(Box<ExprIdentifier>, Box<Expression>) // Created from index expression, so is integer
+}
 
 #[derive(Debug)]
 pub enum Expression {
@@ -15,7 +22,7 @@ pub enum Expression {
     Unary(UnaryOperator, Box<Expression>),
     Variable(String, Type),
     Constant(String, Type),
-    Assignment(String, Box<Expression>),
+    Assignment(ExprIdentifier, Box<Expression>),
     Grouping(Box<Expression>),
     Array(Vec<Expression>),
 }
@@ -42,16 +49,17 @@ impl Expression {
             Expression::Unary(op, exp) => op.evaluate(exp, env),
             Expression::Grouping(expr) => expr.evaluate(env),
             Expression::Variable(name, _) | Expression::Constant(name, _) => {
-                Ok(env.borrow().get(&name))
+                env.borrow().get(&Identifier::from(name.to_string()))
             }
             Expression::Array(v) => Ok(Literal::List(
                 v.into_iter()
                     .map(|l| l.evaluate(Rc::clone(&env)))
                     .collect::<Result<Vec<_>, _>>()?,
             )),
-            Expression::Assignment(name, exp) => {
+            Expression::Assignment(ident, exp) => {
                 let val = exp.evaluate(Rc::clone(&env))?;
-                env.borrow_mut().assign(&name, val.clone())?;
+                let evaluated_ident = Identifier::try_from((ident, Rc::clone(&env)))?;
+                env.borrow_mut().assign(&evaluated_ident, val.clone())?;
                 Ok(val)
             }
         }

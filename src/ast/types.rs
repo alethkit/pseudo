@@ -8,7 +8,8 @@ pub enum Type {
     Character,
     Str,
     List(Box<Type>),
-    Any // Used for list errors to avoid a clone.
+    Any, // Used for list errors to avoid a clone.
+    Void // Used for functions that do not return. Should not be used anywhere else.
 }
 
 impl From<Token> for Type {

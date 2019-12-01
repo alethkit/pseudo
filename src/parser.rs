@@ -1,10 +1,10 @@
 use super::ast::{
-    expression::Expression,
+    expression::{ExprIdentifier, Expression},
+    literal::Literal,
     location::Location,
     operator::{BinaryOperator, EvalError, UnaryOperator},
     statement::Statement,
     token::Token,
-    literal::Literal,
     types::{Type, TypeError, Typed},
 };
 use std::collections::HashMap;
@@ -134,16 +134,45 @@ where
         self.assignment()
     }
 
+    fn get_ident(&self, expr: Expression) -> Result<ExprIdentifier, ParserError> {
+        match expr {
+            Expression::Variable(name, _) => Ok(ExprIdentifier::Variable(name)),
+            Expression::Binary {
+                left: ident,
+                op: BinaryOperator::Index,
+                right: index,
+            } => {
+                let inner_ident = self.get_ident(*ident)?;
+                Ok(ExprIdentifier::Index(Box::new(inner_ident), index))
+            }
+            Expression::Constant(_, _) => Err(ParserError::ConstantsAreConstant),
+            _ => Err(ParserError::InvalidAssignmentTarget),
+        }
+    }
+
     fn assignment(&mut self) -> LocResult<Expression> {
+        //TODO: Get array assignment to work
         let (expr, loc) = self.logical_or()?;
         match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
             (Token::Equals, _) => {
                 let (_, loc2) = self.tokens.next().unwrap();
                 let (val, _) = self.assignment()?;
+                println!("{:#?}", expr);
                 match expr {
                     Expression::Variable(name, t) => {
                         self.check_type(&val, t, loc2)?;
-                        Ok((Expression::Assignment(name, Box::new(val)), loc2))
+                        Ok((
+                            Expression::Assignment(ExprIdentifier::Variable(name), Box::new(val)),
+                            loc2,
+                        ))
+                    }
+                    Expression::Binary {
+                        op: BinaryOperator::Index,
+                        ..
+                    } => {
+                        self.check_type(&val, expr.get_type(), loc2)?;
+                        let ident = self.get_ident(expr).map_err(|e| (e, loc2))?;
+                        Ok((Expression::Assignment(ident, Box::new(val)), loc2))
                     }
 
                     Expression::Constant(_, _) => Err((ParserError::ConstantsAreConstant, loc2)),
@@ -416,15 +445,25 @@ where
                 let (val, loc) = self.expression()?;
                 self.check_type(&val, Type::Integer, loc)?;
                 val
+            } else {
+                Expression::Literal(Literal::Integer(1))
             }
-            else {Expression::Literal(Literal::Integer(1))}
         };
         self.consume(Token::Do)?;
         self.type_scope.insert(loop_var.clone(), Type::Integer); // Adds loop variable to scope temporarily.
         let (body, _) = self.block_statement(&[Token::EndFor], Parser::statement)?;
         self.consume(Token::EndFor)?;
         self.type_scope.remove(&loop_var);
-        Ok((Statement::For {loop_var, initial_val, end_val, step_val, body},loc))
+        Ok((
+            Statement::For {
+                loop_var,
+                initial_val,
+                end_val,
+                step_val,
+                body,
+            },
+            loc,
+        ))
     }
 
     fn statement(&mut self) -> LocResult<Statement> {
@@ -440,7 +479,7 @@ where
             (Token::Do, _) => {
                 self.tokens.next();
                 self.do_while_statement()
-            },
+            }
             (Token::For, _) => {
                 self.tokens.next();
                 self.for_statement()
