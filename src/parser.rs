@@ -64,13 +64,13 @@ type LocResult<T> = Result<(T, Location), (ParserError, Location)>;
 // Had (Result<T< ParserError>, Location) been used, the `?` operator would not work directly.
 
 macro_rules! recursive_descent {
-    ($self:ident, $fallback:ident, $($ops:pat) | +, $add:stmt) => {{
-        let (mut expr, loc) = $self.$fallback()?;
+    ($self:ident, $lhs:ident, $rhs:ident, $($ops:pat) | +, $add:stmt) => {{
+        let (mut expr, loc) = $self.$lhs()?;
         while let Some((kind, loc2)) = $self.tokens.peek() {
             match kind {
                 $($ops) | + => {
                     let (op_token, loc) = $self.tokens.next().unwrap(); //Safe to unwrap: peek ensures a value exists
-                    let right = $self.$fallback()?.0;
+                    let right = $self.$rhs()?.0;
                     $add
                     let op = BinaryOperator::from(op_token);
                     println!("Left: {:#?}", expr);
@@ -184,33 +184,35 @@ where
     }
 
     fn logical_or(&mut self) -> LocResult<Expression> {
-        recursive_descent!(self, logical_and, Token::Or, ())
+        recursive_descent!(self, logical_and,logical_and, Token::Or, ())
     }
 
     fn logical_and(&mut self) -> LocResult<Expression> {
-        recursive_descent!(self, equality, Token::And, ())
+        recursive_descent!(self, equality, equality, Token::And, ())
     }
     fn equality(&mut self) -> LocResult<Expression> {
-        recursive_descent!(self, comparison, Token::DoubleEqual | Token::NotEqual, ())
+        recursive_descent!(self, comparison, comparison, Token::DoubleEqual | Token::NotEqual, ())
     }
 
     fn comparison(&mut self) -> LocResult<Expression> {
         recursive_descent!(
             self,
             sum,
+			sum,
             Token::LessThan | Token::LessEqual | Token::GreaterThan | Token::GreaterEqual,
             ()
         )
     }
 
     fn sum(&mut self) -> LocResult<Expression> {
-        recursive_descent!(self, factor, Token::Plus | Token::Minus, ())
+        recursive_descent!(self, factor, factor, Token::Plus | Token::Minus, ())
     }
 
     fn factor(&mut self) -> LocResult<Expression> {
         recursive_descent!(
             self,
             unary,
+			unary,
             Token::Star | Token::Slash | Token::Div | Token::Mod,
             ()
         )
@@ -232,7 +234,7 @@ where
     }
 
     fn index(&mut self) -> LocResult<Expression> {
-        recursive_descent!(self, primary, Token::LeftBracket, {
+        recursive_descent!(self, primary, expression, Token::LeftBracket, {
             self.consume(Token::RightBracket)?;
         })
     }
