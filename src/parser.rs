@@ -1,4 +1,5 @@
 use super::ast::{
+    callable::NativeFunction,
     expression::{ExprIdentifier, Expression},
     literal::Literal,
     location::Location,
@@ -11,12 +12,48 @@ use std::collections::HashMap;
 use std::iter::Peekable;
 use std::mem::discriminant;
 
-pub type TypeScope = HashMap<String, Type>;
+type TypeScope = HashMap<String, Type>;
+
+enum CallableTypeSpecifier {
+    Subroutine(Vec<Type>, Type),
+    NativeFunction(NativeFunction),
+}
+
+impl CallableTypeSpecifier {
+    fn validate(&self, arg_types: &Vec<Type>) -> Result<(), ParserError> {
+        match self {
+            Self::Subroutine(type_list, _) => {
+                if type_list == arg_types {
+                    Ok(())
+                } else if type_list.len() != arg_types.len() {
+                    Err(ParserError::IncorrectFunctionArity(type_list.len(), arg_types.len()))
+                } else {
+                    Err(ParserError::Typing(TypeError::ArgumentMismatch(
+                        type_list.to_vec(),
+                        arg_types.to_vec(),
+                    )))
+                }
+            }
+            Self::NativeFunction(fun) => fun.validate(arg_types),
+        }
+    }
+}
+
+impl Typed for CallableTypeSpecifier {
+    fn get_type(&self) -> Type {
+        match self {
+            Self::Subroutine(_, t) => t.clone(),
+            Self::NativeFunction(callable) => callable.get_type(),
+        }
+    }
+}
+
 pub struct Parser<T>
 where
     T: Iterator<Item = (Token, Location)>,
 {
     tokens: Peekable<T>,
+    function_scope: HashMap<String, CallableTypeSpecifier>, // Functions are G L O B A L
     type_scope: TypeScope, // Used to keep track of variables and their types for variable expressions.
 }
 
@@ -25,9 +62,15 @@ where
     T: Iterator<Item = (Token, Location)>,
 {
     fn from(tokens: T) -> Self {
+        let mut function_scope = HashMap::new();
+        function_scope.insert(
+            "LEN".to_owned(),
+            CallableTypeSpecifier::NativeFunction(NativeFunction::Len),
+        );
         Parser {
             tokens: tokens.peekable(),
             type_scope: HashMap::new(),
+            function_scope,
         }
     }
 }
@@ -46,6 +89,10 @@ pub enum ParserError {
     DifferentArrayTypes,
     ConstantsAreConstant, // A special case is added, if users forget that constants are constant.
     InvalidAssignmentTarget,
+    NotACallable,
+    IncorrectFunctionArity(usize, usize), // Wrong number of arguments passed
+    AlreadyDefinedAsFunction
+    
 }
 
 impl From<TypeError> for ParserError {
@@ -184,21 +231,27 @@ where
     }
 
     fn logical_or(&mut self) -> LocResult<Expression> {
-        recursive_descent!(self, logical_and,logical_and, Token::Or, ())
+        recursive_descent!(self, logical_and, logical_and, Token::Or, ())
     }
 
     fn logical_and(&mut self) -> LocResult<Expression> {
         recursive_descent!(self, equality, equality, Token::And, ())
     }
     fn equality(&mut self) -> LocResult<Expression> {
-        recursive_descent!(self, comparison, comparison, Token::DoubleEqual | Token::NotEqual, ())
+        recursive_descent!(
+            self,
+            comparison,
+            comparison,
+            Token::DoubleEqual | Token::NotEqual,
+            ()
+        )
     }
 
     fn comparison(&mut self) -> LocResult<Expression> {
         recursive_descent!(
             self,
             sum,
-			sum,
+            sum,
             Token::LessThan | Token::LessEqual | Token::GreaterThan | Token::GreaterEqual,
             ()
         )
@@ -212,7 +265,7 @@ where
         recursive_descent!(
             self,
             unary,
-			unary,
+            unary,
             Token::Star | Token::Slash | Token::Div | Token::Mod,
             ()
         )
@@ -229,8 +282,55 @@ where
                     Err(e) => Err((ParserError::from(e), loc)),
                 }
             }
-            _ => self.index(),
+            _ => self.call(),
         }
+    }
+    fn call(&mut self) -> LocResult<Expression> {
+        let (expr, loc) = self.index()?;
+        if let Some((Token::LeftParenthesis, _)) = self.tokens.peek() {
+            println!("call time!");
+            println!("{:#?}", expr);
+            let (_, _) = self.tokens.next().unwrap();
+            let mut arguments = Vec::new();
+            arguments.push(self.expression()?.0);
+            while let Some((kind, loc2)) = self.tokens.next() {
+                match kind {
+                    Token::Comma => {
+                        arguments.push(self.expression()?.0);
+                    }
+                    Token::RightParenthesis => match expr {
+                        Expression::Subroutine(name, t) | Expression::NativeFunction(name, t) => {
+
+                            let argument_type_list =
+                                arguments.iter().map(Typed::get_type).collect();
+                            let call_typer =
+                                self.function_scope.get(&name).expect("already checked when identifier is parsed");
+                            call_typer
+                                .validate(&argument_type_list)
+                                .map_err(|e| (e, loc2))?;
+                            //TODO: Validate argument length and type
+                            return Ok((
+                                Expression::Call {
+                                    callee: name,
+                                    args: arguments,
+                                    return_type: t,
+                                },
+                                loc2,
+                            ));
+                        }
+                        _ => return Err((ParserError::NotACallable, loc2)),
+                    },
+                    _ => {
+                        return Err((
+                            ParserError::ExpectedOneOf(vec![Token::Comma, Token::RightParenthesis]),
+                            loc2,
+                        ))
+                    }
+                }
+            }
+            return Err(Parser::<T>::UnexpectedEOF);
+        }
+        Ok((expr, loc))
     }
 
     fn index(&mut self) -> LocResult<Expression> {
@@ -255,11 +355,17 @@ where
             (Token::LeftBracket, loc) => self.list(loc),
             (Token::ConstIdentifier(name), loc) => match self.type_scope.get(&name) {
                 Some(t) => Ok((Expression::Constant(name, t.clone()), loc)),
-                None => Err((ParserError::UndefinedConstant(name), loc)),
+                None => match self.function_scope.get(&name) {
+                    Some(spec) => Ok((Expression::NativeFunction(name, spec.get_type()), loc)),
+                    None => Err((ParserError::UndefinedConstant(name), loc)),
+                },
             },
             (Token::VarIdentifier(name), loc) => match self.type_scope.get(&name) {
                 Some(t) => Ok((Expression::Variable(name, t.clone()), loc)),
-                None => Err((ParserError::UndefinedVariable(name), loc)),
+                None => match self.function_scope.get(&name) {
+                    Some(spec) => Ok((Expression::Subroutine(name, spec.get_type()), loc)),
+                    None => Err((ParserError::UndefinedVariable(name), loc)),
+                },
             },
 
             (_, loc) => Err((ParserError::ExpectedExpression, loc)),
@@ -318,8 +424,12 @@ where
         self.consume(Token::SemiColon)?;
         println!("{:#?}", var_val);
         self.check_type(&var_val, var_type.clone(), loc)?;
-        self.type_scope.insert(var_name.clone(), var_type);
-        Ok((Statement::VarDeclaration(var_name, var_val), loc))
+        if self.function_scope.contains_key(&var_name) {
+            Err((ParserError::AlreadyDefinedAsFunction, loc))
+        } else {
+            self.type_scope.insert(var_name.clone(), var_type);
+            Ok((Statement::VarDeclaration(var_name, var_val), loc))
+        }
     }
     fn constant_declaration(&mut self) -> LocResult<Statement> {
         self.consume(Token::Colon)?;
@@ -332,8 +442,12 @@ where
         let (const_val, _) = self.expression()?;
         self.consume(Token::SemiColon)?;
         self.check_type(&const_val, const_type.clone(), loc)?;
+        if self.function_scope.contains_key(&const_name) {
+            Err((ParserError::AlreadyDefinedAsFunction, loc))
+        } else {
         self.type_scope.insert(const_name.clone(), const_type); // Scope allows us to keep track of current variables and their types.
         Ok((Statement::ConstDeclaraction(const_name, const_val), loc))
+        }
     }
 
     fn block_statement(

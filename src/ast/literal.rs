@@ -7,7 +7,8 @@ pub enum Literal {
     Str(String), // Renamed to avoid namespace conflict with std::str::String
     Character(char),
     Boolean(bool), // True and False (Stored as the boolean value)
-    List(Vec<Literal>)
+    List(Vec<Literal>),
+    Void // Might be needed.
 }
 
 impl From<Literal> for bool { // Should only be called when known if integer
@@ -36,7 +37,8 @@ impl Typed for Literal {
             Literal::Str(_) => Type::Str,
             Literal::Character(_) => Type::Character,
             Literal::Boolean(_) => Type::Boolean,
-            Literal::List(l) => Type::List(Box::new(l.iter().next().unwrap().get_type()))
+            Literal::List(l) => Type::List(Box::new(l.iter().next().unwrap().get_type())),
+            Literal::Void => Type::Void
             // Assumes that array is non empty and that types are all equal.
         }
     }

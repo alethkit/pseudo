@@ -1,7 +1,8 @@
 use crate::ast::expression::ExprIdentifier;
 use crate::ast::literal::Literal;
 use crate::ast::operator::EvalError;
-use std::cell::{RefCell, RefMut};
+use crate::interpreter::Interpreter;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -23,15 +24,15 @@ impl From<String> for Identifier {
     }
 }
 
-impl TryFrom<(&ExprIdentifier, EnvWrapper)> for Identifier {
+impl TryFrom<(&ExprIdentifier, EnvWrapper, &Interpreter)> for Identifier {
     type Error = EvalError;
 
-    fn try_from((value, env): (&ExprIdentifier, EnvWrapper)) -> Result<Self, Self::Error> {
+    fn try_from((value, env,interpreter): (&ExprIdentifier, EnvWrapper, &Interpreter)) -> Result<Self, Self::Error> {
         match value {
             ExprIdentifier::Variable(name) => Ok(Self::Variable(name.to_string())),
-            ExprIdentifier::Index(ident, index) => match index.evaluate(Rc::clone(&env))? {
+            ExprIdentifier::Index(ident, index) => match index.evaluate(Rc::clone(&env), interpreter)? {
                 Literal::Integer(int) => Ok(Self::Index(
-                    Self::try_from((&**ident, env)).map(Box::new)?,
+                    Self::try_from((&**ident, env, interpreter)).map(Box::new)?,
                     int as usize,
                 )),
                 _ => unreachable!("Already type checked"),
@@ -48,6 +49,10 @@ impl Environment {
             values: HashMap::new(),
             parent: None,
         }
+    }
+
+    pub fn new_wrapper() -> EnvWrapper {
+        Rc::new(RefCell::new(Self::new()))
     }
 
     pub fn from_enclosing(env: EnvWrapper) -> Self {
@@ -87,21 +92,21 @@ impl Environment {
                     Ok(value)
                 }
                 None => match &self.parent {
-                    Some(p) => p.borrow_mut().assign(ident, value), 
+                    Some(p) => p.borrow_mut().assign(ident, value),
                     None => unreachable!("Type scope"),
                 },
             },
-            Identifier::Index(id, index) =>  {
-		let prospective_list = self.get(id)?;
+            Identifier::Index(id, index) => {
+                let prospective_list = self.get(id)?;
                 match prospective_list {
                     Literal::List(mut list) => {
                         *list.get_mut(*index).ok_or(EvalError::OutOfRange)? = value.clone();
                         self.assign(id, Literal::List(list));
                         Ok(value)
-                    },
+                    }
                     _ => unreachable!("Index should have been type checked on list"),
                 }
-            },
+            }
         }
     }
 }

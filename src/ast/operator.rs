@@ -3,6 +3,7 @@ use super::literal::Literal;
 use super::token::Token;
 use super::types::{Type, TypeError, Typed};
 use crate::environment::EnvWrapper;
+use crate::interpreter::Interpreter;
 
 use std::rc::Rc;
 
@@ -37,13 +38,13 @@ impl UnaryOperator {
             },
         }
     }
-   pub fn evaluate(&self, expr: &Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
+   pub fn evaluate(&self, expr: &Expression, env: EnvWrapper, interpreter: &Interpreter) -> Result<Literal, EvalError> {
         match self {
-            UnaryOperator::Not => match expr.evaluate(env)? {
+            UnaryOperator::Not => match expr.evaluate(env, interpreter)? {
                 Literal::Boolean(b) => Ok(Literal::Boolean(!b)),
                 _ => unreachable!(),
             },
-            UnaryOperator::Minus => match expr.evaluate(env)? {
+            UnaryOperator::Minus => match expr.evaluate(env, interpreter)? {
                 Literal::Integer(int) => Ok(Literal::Integer(-int)),
                 Literal::Real(rl) => Ok(Literal::Real(-rl)),
                 _ => unreachable!(),
@@ -75,7 +76,8 @@ pub enum BinaryOperator {
 pub enum EvalError { // Implemented to avoid panics
     DivisionByZero,
     OutOfRange,
-    UndefinedVariable
+    UndefinedVariable,
+    MustBeCalled
 }
 impl From<Token> for BinaryOperator {
     fn from(t: Token) -> Self {
@@ -173,8 +175,8 @@ impl BinaryOperator {
         }
     }
 
-    pub fn evaluate(&self, expr1: &Expression, expr2: &Expression, env: EnvWrapper) -> Result<Literal, EvalError> {
-        let (val1, val2) = (expr1.evaluate(Rc::clone(&env))?, expr2.evaluate(Rc::clone(&env))?);
+    pub fn evaluate(&self, expr1: &Expression, expr2: &Expression, env: EnvWrapper, interpreter: &Interpreter) -> Result<Literal, EvalError> {
+        let (val1, val2) = (expr1.evaluate(Rc::clone(&env), interpreter)?, expr2.evaluate(Rc::clone(&env), interpreter)?);
         match self {
             BinaryOperator::Equality => Ok(Literal::Boolean(val1 == val2)),
             BinaryOperator::Inequality => Ok(Literal::Boolean(val1 != val2)),

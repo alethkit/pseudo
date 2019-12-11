@@ -9,7 +9,8 @@ pub enum Type {
     Str,
     List(Box<Type>),
     Any, // Used for list errors to avoid a clone.
-    Void // Used for functions that do not return. Should not be used anywhere else.
+    Void, // Used for functions that do not return. Should not be used anywhere else.
+    NotTyped // Used for function names that do not have an inherent value unless called.
 }
 
 impl From<Token> for Type {
@@ -31,7 +32,9 @@ pub enum TypeError{
     SingleExpectedOneOf(Vec<Type>, Type), // Unary operators that accept multiple types
     DoubleExpected((Type, Type), (Type, Type)),
     DoubleExpectedOneOf(Vec<(Type, Type)>, (Type, Type)),
-    UnequalTypes(Type, Type)
+    UnequalTypes(Type, Type),
+    ArgumentMismatch(Vec<Type>,Vec<Type>), // When argument lists do not match
+    ArgumentMistatchOneOf(Vec<Vec<Type>>, Vec<Type>)
 }
 
 pub trait Typed {
