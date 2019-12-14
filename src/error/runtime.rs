@@ -1,13 +1,10 @@
-use crate::ast::operator::EvalError;
 #[derive(Debug)]
 pub enum RuntimeError {
-    Eval(EvalError),
+    DivisionByZero,
+    OutOfRange,
+    UndefinedVariable,
+    MustBeCalled,
     RangeStepCannotBeZero,
     InvalidRangeBound
 }
 
-impl From<EvalError> for RuntimeError {
-    fn from(err: EvalError) -> Self {
-        Self::Eval(err)
-    }
-}

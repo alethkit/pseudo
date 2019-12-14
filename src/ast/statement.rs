@@ -1,6 +1,7 @@
-    use super::expression::Expression;
+use super::expression::Expression;
+use super::types::Type;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Expression(Expression),
     VarDeclaration(String, Expression),
@@ -24,5 +25,12 @@ pub enum Statement {
         end_val: Expression,
         step_val: Expression, // default value is 1
         body: Vec<Statement>
-    }
+    },
+    SubroutineDeclaration {
+        name: String,
+        parameters: Vec<(String, Type)>,
+        return_type: Type,
+        body: Vec<Statement>
+    },
+    Return(Expression)
 }

@@ -26,7 +26,7 @@ fn main() {
         match program {
             Ok(stmts) => {
                 println!("statements : {:#?}", stmts);
-                let inter = Interpreter::new();
+                let mut inter = Interpreter::new();
                 if let Err(e) = inter.execute(&stmts.into_iter().map(|c| c.0).collect()) {
                     println!("Runtime error: {:#?}", e);
                 }

@@ -2,60 +2,57 @@ use super::statement::Statement;
 use super::types::{Type, TypeError, Typed};
 use super::literal::Literal;
 use crate::parser::ParserError;
-use super::operator::EvalError;
 use crate::environment::Environment;
 use crate::interpreter::Interpreter;
+use crate::error::runtime::RuntimeError;
 
-#[derive(Debug)]
-pub enum Callable {
+#[derive(Debug, Clone)]
+pub enum Callable { 
+// The struct representing subroutines for the interpreter 
     Subroutine(Subroutine),
     Native(NativeFunction),
 }
 
 impl Callable {
-    pub fn call(&self, args: Vec<Literal>, interpreter: &Interpreter) -> Result<Literal, EvalError> {
+    pub fn call(&self, args: Vec<Literal>, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
         match self {
             Self::Subroutine(func) => func.call(args, interpreter),
-            Self::Native(nat_func) => nat_func.call(args) // A native function does not need to call other functions to p
+            Self::Native(nat_func) => nat_func.call(args) // A native function does not need to call other functions to work
         }
 
     }
 }
 
-impl Typed for Callable {
-    fn get_type(&self) -> Type {
-        self.get_type()
-    }
-}
-
-#[derive(Debug)]
-struct Subroutine {
+#[derive(Debug, Clone)]
+pub struct Subroutine {
     name: String,
-    parameters: Vec<(String, Type)>,
+    parameters: Vec<String>,
     body: Vec<Statement>,
-    return_type: Type,
 }
 
 impl Subroutine {
     
-    fn call(&self, args: Vec<Literal>, interpreter: &Interpreter) -> Result<Literal, EvalError> {
+
+    pub fn new(name: String, parameters: Vec<String>, body: Vec<Statement>) -> Self {
+        Subroutine {
+            name,
+            parameters,
+            body
+        }
+    }
+
+    fn call(&self, args: Vec<Literal>, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
         let env = Environment::new_wrapper();
-        let parameter_arg_pairs = self.parameters.iter().map(|(name, _)| name).zip(args.into_iter());
+        let parameter_arg_pairs = self.parameters.iter().zip(args.into_iter());
         for (name, value) in parameter_arg_pairs {
             env.borrow_mut().define(name.to_owned(),value)
         }
-        interpreter.execute_block(&self.body, env);
-        Ok(Literal::Void)
+        Ok(interpreter.execute_block(&self.body, env)?.unwrap_or(Literal::Void))
     }
 }
 
-impl Typed for Subroutine {
-    fn get_type(&self) -> Type {
-        self.return_type.clone()
-    }
-}
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum NativeFunction {
     Len,
 }
@@ -80,7 +77,7 @@ impl NativeFunction {
             }
         }
     }
-    pub fn call(&self, arguments: Vec<Literal>) -> Result<Literal, EvalError> {
+    pub fn call(&self, arguments: Vec<Literal>) -> Result<Literal, RuntimeError> {
         match self {
             Self::Len => {
                 match arguments.get(0).unwrap() {
@@ -96,7 +93,8 @@ impl NativeFunction {
 impl Typed for NativeFunction {
     fn get_type(&self) -> Type {
         match self {
-            Self::Len => Type::Integer,
+            Self::Len => Type::Integer
         }
     }
 }
+

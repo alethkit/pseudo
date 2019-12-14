@@ -1,7 +1,7 @@
 use crate::ast::expression::ExprIdentifier;
 use crate::ast::literal::Literal;
-use crate::ast::operator::EvalError;
 use crate::interpreter::Interpreter;
+use crate::error::runtime::RuntimeError;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -24,10 +24,10 @@ impl From<String> for Identifier {
     }
 }
 
-impl TryFrom<(&ExprIdentifier, EnvWrapper, &Interpreter)> for Identifier {
-    type Error = EvalError;
+impl TryFrom<(&ExprIdentifier, EnvWrapper, &mut Interpreter)> for Identifier {
+    type Error = RuntimeError;
 
-    fn try_from((value, env,interpreter): (&ExprIdentifier, EnvWrapper, &Interpreter)) -> Result<Self, Self::Error> {
+    fn try_from((value, env,interpreter): (&ExprIdentifier, EnvWrapper, &mut Interpreter)) -> Result<Self, Self::Error> {
         match value {
             ExprIdentifier::Variable(name) => Ok(Self::Variable(name.to_string())),
             ExprIdentifier::Index(ident, index) => match index.evaluate(Rc::clone(&env), interpreter)? {
@@ -66,25 +66,25 @@ impl Environment {
         self.values.insert(name, value);
     }
 
-    pub fn get(&self, ident: &Identifier) -> Result<Literal, EvalError> {
+    pub fn get(&self, ident: &Identifier) -> Result<Literal, RuntimeError> {
         match ident {
             Identifier::Variable(name) => match self.values.get(name) {
                 Some(v) => Ok(v.clone()),
                 None => self
                     .parent
                     .as_ref()
-                    .ok_or(EvalError::UndefinedVariable)?
+                    .ok_or(RuntimeError::UndefinedVariable)?
                     .borrow()
                     .get(ident),
             },
             Identifier::Index(id, index) => match self.get(id)? {
-                Literal::List(v) => v.get(*index).ok_or(EvalError::OutOfRange).map(Clone::clone),
+                Literal::List(v) => v.get(*index).ok_or(RuntimeError::OutOfRange).map(Clone::clone),
                 _ => unreachable!("Index should have been type checked on list"),
             },
         }
     }
 
-    pub fn assign(&mut self, ident: &Identifier, value: Literal) -> Result<Literal, EvalError> {
+    pub fn assign(&mut self, ident: &Identifier, value: Literal) -> Result<Literal, RuntimeError> {
         match ident {
             Identifier::Variable(name) => match self.values.get_mut(name) {
                 Some(v) => {
@@ -100,7 +100,7 @@ impl Environment {
                 let prospective_list = self.get(id)?;
                 match prospective_list {
                     Literal::List(mut list) => {
-                        *list.get_mut(*index).ok_or(EvalError::OutOfRange)? = value.clone();
+                        *list.get_mut(*index).ok_or(RuntimeError::OutOfRange)? = value.clone();
                         self.assign(id, Literal::List(list));
                         Ok(value)
                     }

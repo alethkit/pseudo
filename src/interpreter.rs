@@ -1,4 +1,4 @@
-use super::ast::callable::{Callable, NativeFunction};
+use super::ast::callable::{Callable, NativeFunction, Subroutine};
 use super::ast::literal::Literal;
 use super::ast::statement::Statement;
 use super::environment::{EnvWrapper, Environment};
@@ -26,10 +26,13 @@ impl Interpreter {
         }
     }
 
-    pub fn get_callable(&self, name: &String) -> &Callable {
-        self.functions.get(name).expect("Should have already been present in function scope when parsing")
+    pub fn get_callable(&self, name: &str) -> Callable {
+        self.functions
+            .get(name)
+            .expect("Should have already been present in function scope when parsing")
+            .clone()
     }
-    pub fn execute(&self, statements: &Vec<Statement>) -> Result<(), RuntimeError> {
+    pub fn execute(&mut self, statements: &Vec<Statement>) -> Result<(), RuntimeError> {
         for statement in statements {
             self.execute_statement(&statement, Rc::clone(&self.env))?;
         }
@@ -37,27 +40,32 @@ impl Interpreter {
     }
 
     fn execute_statement(
-        &self,
+        &mut self,
         statement: &Statement,
         env: EnvWrapper,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<Option<Literal>, RuntimeError> {
         match statement {
             Statement::Expression(expr) => {
                 let val = expr.evaluate(env, self)?;
                 println!("{:#?}", val);
-                Ok(())
+                Ok(None)
+            }
+            Statement::Return(expr) => {
+                let val = expr.evaluate(env, self)?;
+                println!("{:#?}", val);
+                Ok(Some(val))
             }
             Statement::ConstDeclaraction(name, expr) => {
                 let val = expr.evaluate(Rc::clone(&env), self)?;
                 println!("Declare constant {:#?} with {:#?}", name, val);
                 env.borrow_mut().define(name.to_string(), val);
-                Ok(())
+                Ok(None)
             }
             Statement::VarDeclaration(name, expr) => {
                 let val = expr.evaluate(Rc::clone(&env), self)?;
                 println!("Declare variable {:#?} with {:#?}", name, val);
                 env.borrow_mut().define(name.to_string(), val);
-                Ok(())
+                Ok(None)
             }
             Statement::If {
                 condition,
@@ -72,7 +80,7 @@ impl Interpreter {
                         println!("false");
                         match alternative {
                             Some(alt) => self.execute_block(&alt, env),
-                            None => Ok(()),
+                            None => Ok(None),
                         }
                     }
                 }
@@ -82,14 +90,14 @@ impl Interpreter {
                 while let true = bool::from(condition.evaluate(Rc::clone(&env), self)?) {
                     self.execute_block(&body, Rc::clone(&env))?;
                 }
-                Ok(())
+                Ok(None)
             }
             Statement::DoWhile { condition, body } => {
                 self.execute_block(&body, Rc::clone(&env))?;
                 while let true = bool::from(condition.evaluate(Rc::clone(&env), self)?) {
                     self.execute_block(&body, Rc::clone(&env))?;
                 }
-                Ok(())
+                Ok(None)
             }
             Statement::For {
                 loop_var,
@@ -121,19 +129,37 @@ impl Interpreter {
                         .define(loop_var.to_string(), Literal::Integer(loop_val));
                     self.execute_block(body, Rc::clone(&loop_var_env))?;
                 }
-                Ok(())
+                Ok(None)
+            }
+            Statement::SubroutineDeclaration {
+                name,
+                parameters,
+                body,
+                ..
+            } => {
+                self.functions.insert(
+                    name.to_string(),
+                    Callable::Subroutine(Subroutine::new(
+                        name.clone(),
+                        parameters.iter().map(|(name, _)| name).cloned().collect(),
+                        body.clone(),
+                    )),
+                );
+                Ok(None)
             }
         }
     }
 
     pub fn execute_block(
-        &self,
+        &mut self,
         block: &Vec<Statement>,
         env: EnvWrapper,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<Option<Literal>, RuntimeError> {
         for statement in block {
-            self.execute_statement(statement, Rc::clone(&env))?;
+            if let Some(val) = self.execute_statement(statement, Rc::clone(&env))? {
+                return Ok(Some(val));
+            }
         }
-        Ok(())
+        Ok(None)
     }
 }

@@ -3,14 +3,14 @@ use super::ast::{
     expression::{ExprIdentifier, Expression},
     literal::Literal,
     location::Location,
-    operator::{BinaryOperator, EvalError, UnaryOperator},
+    operator::{BinaryOperator, UnaryOperator},
     statement::Statement,
     token::Token,
     types::{Type, TypeError, Typed},
 };
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::mem::discriminant;
+use std::mem::{discriminant, swap};
 
 type TypeScope = HashMap<String, Type>;
 
@@ -26,7 +26,10 @@ impl CallableTypeSpecifier {
                 if type_list == arg_types {
                     Ok(())
                 } else if type_list.len() != arg_types.len() {
-                    Err(ParserError::IncorrectFunctionArity(type_list.len(), arg_types.len()))
+                    Err(ParserError::IncorrectFunctionArity(
+                        type_list.len(),
+                        arg_types.len(),
+                    ))
                 } else {
                     Err(ParserError::Typing(TypeError::ArgumentMismatch(
                         type_list.to_vec(),
@@ -78,12 +81,10 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     Typing(TypeError),
-    Evaluation(EvalError),
     ExpectedExpression,
     Expected(Token),
     ExpectedOneOf(Vec<Token>),
     UnexpectedEndOfFile,
-    UnterminatedArray, //Subset of unexcepted end of file, for clarification
     UndefinedVariable(String),
     UndefinedConstant(String),
     DifferentArrayTypes,
@@ -91,18 +92,13 @@ pub enum ParserError {
     InvalidAssignmentTarget,
     NotACallable,
     IncorrectFunctionArity(usize, usize), // Wrong number of arguments passed
-    AlreadyDefinedAsFunction
-    
+    AlreadyDefinedAsFunction,
+    SubroutineRequiresReturn,
 }
 
 impl From<TypeError> for ParserError {
     fn from(err: TypeError) -> Self {
         ParserError::Typing(err)
-    }
-}
-impl From<EvalError> for ParserError {
-    fn from(err: EvalError) -> Self {
-        ParserError::Evaluation(err)
     }
 }
 
@@ -291,44 +287,37 @@ where
             println!("call time!");
             println!("{:#?}", expr);
             let (_, _) = self.tokens.next().unwrap();
-            let mut arguments = Vec::new();
-            arguments.push(self.expression()?.0);
-            while let Some((kind, loc2)) = self.tokens.next() {
-                match kind {
-                    Token::Comma => {
-                        arguments.push(self.expression()?.0);
-                    }
-                    Token::RightParenthesis => match expr {
-                        Expression::Subroutine(name, t) | Expression::NativeFunction(name, t) => {
-
-                            let argument_type_list =
-                                arguments.iter().map(Typed::get_type).collect();
-                            let call_typer =
-                                self.function_scope.get(&name).expect("already checked when identifier is parsed");
-                            call_typer
-                                .validate(&argument_type_list)
-                                .map_err(|e| (e, loc2))?;
-                            //TODO: Validate argument length and type
-                            return Ok((
-                                Expression::Call {
-                                    callee: name,
-                                    args: arguments,
-                                    return_type: t,
-                                },
-                                loc2,
-                            ));
-                        }
-                        _ => return Err((ParserError::NotACallable, loc2)),
-                    },
-                    _ => {
-                        return Err((
-                            ParserError::ExpectedOneOf(vec![Token::Comma, Token::RightParenthesis]),
-                            loc2,
-                        ))
-                    }
+            let arguments = if let Some((Token::RightParenthesis, _)) = self.tokens.peek() {
+                self.tokens.next();
+                Vec::new()
+            } else {
+                self.comma_separated_values(Token::RightParenthesis, Parser::expression)?
+                    .0
+            };
+            match expr {
+                Expression::Subroutine(name, t) | Expression::NativeFunction(name, t) => {
+                    let argument_type_list = arguments.iter().map(Typed::get_type).collect();
+                    let call_typer = self
+                        .function_scope
+                        .get(&name)
+                        .expect("already checked when identifier is parsed");
+                    call_typer
+                        .validate(&argument_type_list)
+                        .map_err(|e| (e, loc))?;
+                    //TODO: Validate argument length and type
+                    return Ok((
+                        Expression::Call {
+                            callee: name,
+                            args: arguments,
+                            return_type: t,
+                        },
+                        loc,
+                    ));
+                }
+                _ => {
+                    return Err((ParserError::NotACallable, loc));
                 }
             }
-            return Err(Parser::<T>::UnexpectedEOF);
         }
         Ok((expr, loc))
     }
@@ -352,7 +341,7 @@ where
                     _ => Err((ParserError::Expected(Token::RightParenthesis), loc)),
                 }
             }
-            (Token::LeftBracket, loc) => self.list(loc),
+            (Token::LeftBracket, _) => self.list(),
             (Token::ConstIdentifier(name), loc) => match self.type_scope.get(&name) {
                 Some(t) => Ok((Expression::Constant(name, t.clone()), loc)),
                 None => match self.function_scope.get(&name) {
@@ -372,46 +361,50 @@ where
         }
     }
 
-    fn list(&mut self, loc: Location) -> LocResult<Expression> {
-        let mut prospective_list = Vec::new();
-        prospective_list.push(self.expression()?);
-        while let Some((kind, loc2)) = self.tokens.next() {
-            match kind {
-                Token::Comma => {
-                    prospective_list.push(self.expression()?);
-                }
-                Token::RightBracket => {
-                    let mut non_loc_list = prospective_list.iter().map(|c| &c.0); // This list is for checking types
-                    let first_lit_type = non_loc_list
-                        .next()
-                        .ok_or((ParserError::UnterminatedArray, loc2))?
-                        .get_type();
-                    if non_loc_list.all(|lit| lit.get_type() == first_lit_type) {
-                        return Ok((
-                            Expression::Array(prospective_list.into_iter().map(|c| c.0).collect()),
-                            loc2,
-                        ));
-                    } else {
-                        return Err((ParserError::DifferentArrayTypes, loc2));
-                    }
-                }
-                _ => {
-                    return Err((
-                        ParserError::ExpectedOneOf(vec![Token::Comma, Token::RightBracket]),
-                        loc2,
-                    ))
-                }
-            }
+    fn list(&mut self) -> LocResult<Expression> {
+        let (list_elements, loc) =
+            self.comma_separated_values(Token::RightBracket, Parser::expression)?;
+        let first_lit_type = list_elements
+            .iter()
+            .next()
+            .expect("At least one element in the list")
+            .get_type();
+        if list_elements
+            .iter()
+            .all(|lit| lit.get_type() == first_lit_type)
+        {
+            Ok((Expression::Array(list_elements), loc))
+        } else {
+            Err((ParserError::DifferentArrayTypes, loc))
         }
-        Err((ParserError::UnterminatedArray, loc))
     }
 
+    fn comma_separated_values<Val>(
+        &mut self,
+        terminator: Token,
+        value_function: fn(&mut Self) -> LocResult<Val>,
+    ) -> LocResult<Vec<Val>> {
+        let mut expression_list = Vec::new();
+        expression_list.push(value_function(self)?.0);
+        while let Some((kind, loc)) = self.tokens.next() {
+            if discriminant(&kind) == discriminant(&Token::Comma) {
+                expression_list.push(value_function(self)?.0);
+            } else if discriminant(&kind) == discriminant(&terminator) {
+                return Ok((expression_list, loc));
+            } else {
+                return Err((
+                    ParserError::ExpectedOneOf(vec![Token::Comma, terminator]),
+                    loc,
+                ));
+            }
+        }
+        Err(Parser::<T>::UnexpectedEOF)
+    }
     fn expression_statement(&mut self) -> LocResult<Statement> {
         let (expr, loc) = self.expression()?;
         self.consume(Token::SemiColon)?;
         Ok((Statement::Expression(expr), loc))
     }
-
     fn var_declaration(&mut self) -> LocResult<Statement> {
         self.consume(Token::Colon)?;
         let (var_type, _) = self.type_hint()?;
@@ -445,15 +438,88 @@ where
         if self.function_scope.contains_key(&const_name) {
             Err((ParserError::AlreadyDefinedAsFunction, loc))
         } else {
-        self.type_scope.insert(const_name.clone(), const_type); // Scope allows us to keep track of current variables and their types.
-        Ok((Statement::ConstDeclaraction(const_name, const_val), loc))
+            self.type_scope.insert(const_name.clone(), const_type); // Scope allows us to keep track of current variables and their types.
+            Ok((Statement::ConstDeclaraction(const_name, const_val), loc))
         }
+    }
+    fn subroutine_declaration(&mut self) -> LocResult<Statement> {
+        //TODO: check that if a function has a return type, there is one return statement
+        let (subroutine_name, loc) = match self.consume(Token::VarIdentifier(String::new()))? {
+            (Token::VarIdentifier(name), loc) => (name, loc),
+            _ => unreachable!("consume checks type"),
+        };
+        self.consume(Token::LeftParenthesis)?;
+        println!(
+            "{:#?}",
+            self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)?.0
+        );
+        let parameters = if let Some((Token::RightParenthesis, _)) = self.tokens.peek() {
+            self.tokens.next();
+            Vec::new()
+        } else {
+            self.comma_separated_values(Token::RightParenthesis, Parser::name_type_pair)?
+                .0
+        };
+        let return_type = if let Some((Token::Arrow, _)) = self.tokens.peek() {
+            self.tokens.next();
+            self.type_hint()?.0
+        } else {
+            Type::Void
+        };
+        let mut type_scope_placeholder = HashMap::new();
+        for (name, t) in parameters.iter() {
+            type_scope_placeholder.insert(name.clone(), t.clone());
+        }
+        swap(&mut self.type_scope, &mut type_scope_placeholder);
+        let parameter_type_list: Vec<Type> = parameters.iter().map(|(_, t)| t).cloned().collect();
+        self.function_scope.insert(
+            subroutine_name.clone(),
+            CallableTypeSpecifier::Subroutine(parameter_type_list, return_type.clone()),
+        ); // Inserts own function to allow for recursive functions
+
+        let (body, _) = self.block_statement(
+            &[Token::EndSubroutine],
+            &mut (|s| Parser::function_statement(s, return_type.clone())),
+        )?;
+        swap(&mut self.type_scope, &mut type_scope_placeholder);
+        self.consume(Token::EndSubroutine)?;
+        self.consume(Token::SemiColon)?;
+
+        let return_discriminant =
+            discriminant(&Statement::Return(Expression::Literal(Literal::Integer(0)))); // Exists to compare with discriminant
+        if return_type != Type::Void
+            && body
+                .iter()
+                .all(|stmt| discriminant(stmt) != return_discriminant)
+        {
+            Err((ParserError::SubroutineRequiresReturn, loc))
+        } else {
+            Ok((
+                Statement::SubroutineDeclaration {
+                    name: subroutine_name,
+                    parameters,
+                    return_type,
+                    body,
+                },
+                loc,
+            ))
+        }
+    }
+
+    fn name_type_pair(&mut self) -> LocResult<(String, Type)> {
+        let (name, _) = match self.consume(Token::VarIdentifier(String::new()))? {
+            (Token::VarIdentifier(name), loc) => (name, loc),
+            _ => unreachable!("consume checks type"),
+        };
+        self.consume(Token::Colon)?;
+        let (parameter_type, loc) = self.type_hint()?;
+        Ok(((name, parameter_type), loc))
     }
 
     fn block_statement(
         &mut self,
         end_tok: &[Token],
-        fallback: fn(&mut Self) -> LocResult<Statement>,
+        fallback: &mut dyn FnMut(&mut Self) -> LocResult<Statement>,
     ) -> LocResult<Vec<Statement>> {
         let mut block = Vec::new();
         while let Some((kind, loc)) = self.tokens.peek() {
@@ -507,11 +573,12 @@ where
         let (condition, loc) = self.expression()?;
         self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Then)?;
-        let (body, _) = self.block_statement(&[Token::Else, Token::EndIf], Parser::statement)?;
+        let (body, _) =
+            self.block_statement(&[Token::Else, Token::EndIf], &mut Parser::statement)?;
         let alternative =
             if let (Token::Else, _) = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
                 self.tokens.next();
-                Some(self.block_statement(&[Token::EndIf], Parser::statement)?)
+                Some(self.block_statement(&[Token::EndIf], &mut Parser::statement)?)
             } else {
                 None
             };
@@ -530,13 +597,13 @@ where
         let (condition, loc) = self.expression()?;
         self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Do)?;
-        let (body, _) = self.block_statement(&[Token::EndWhile], Parser::statement)?;
+        let (body, _) = self.block_statement(&[Token::EndWhile], &mut Parser::statement)?;
         self.consume(Token::EndWhile)?;
         Ok((Statement::While { condition, body }, loc))
     }
 
     fn do_while_statement(&mut self) -> LocResult<Statement> {
-        let (body, _) = self.block_statement(&[Token::While], Parser::statement)?;
+        let (body, _) = self.block_statement(&[Token::While], &mut Parser::statement)?;
         self.consume(Token::While)?;
         let (condition, loc) = self.expression()?;
         self.check_type(&condition, Type::Boolean, loc)?;
@@ -556,7 +623,7 @@ where
         let (end_val, end_loc) = self.expression()?;
         self.check_type(&end_val, Type::Integer, end_loc)?;
         let step_val = {
-            if let (Token::Step, step_loc) = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
+            if let (Token::Step, _) = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
                 self.tokens.next();
                 let (val, loc) = self.expression()?;
                 self.check_type(&val, Type::Integer, loc)?;
@@ -567,7 +634,7 @@ where
         };
         self.consume(Token::Do)?;
         self.type_scope.insert(loop_var.clone(), Type::Integer); // Adds loop variable to scope temporarily.
-        let (body, _) = self.block_statement(&[Token::EndFor], Parser::statement)?;
+        let (body, _) = self.block_statement(&[Token::EndFor], &mut Parser::statement)?;
         self.consume(Token::EndFor)?;
         self.type_scope.remove(&loop_var);
         Ok((
@@ -583,6 +650,7 @@ where
     }
 
     fn statement(&mut self) -> LocResult<Statement> {
+        // Statements are allowed in any sort of statement block.
         match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
             (Token::If, _) => {
                 self.tokens.next();
@@ -604,7 +672,8 @@ where
         }
     }
 
-    fn declaration(&mut self) -> LocResult<Statement> {
+    fn local_declaration(&mut self) -> LocResult<Statement> {
+        // Local declarations are only allowed in functions and the global program.
         match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
             (Token::Var, _) => {
                 self.tokens.next();
@@ -617,6 +686,47 @@ where
             _ => self.statement(),
         }
     }
+
+    fn function_statement(&mut self, return_type: Type) -> LocResult<Statement> {
+        // Includes local declarations and return statements
+        match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
+            (Token::Return, _) => {
+                self.tokens.next();
+                self.return_statement(return_type)
+            }
+            _ => self.local_declaration(),
+        }
+    }
+
+    fn return_statement(&mut self, return_type: Type) -> LocResult<Statement> {
+        let (expr, loc) = if let Some((Token::SemiColon,_)) = self.tokens.peek() {
+            let (_, loc_semicolon) = self.consume(Token::SemiColon)?;
+            (Expression::Literal(Literal::Void), loc_semicolon)
+        } else {
+            self.expression()?
+        };
+        let expr_type = expr.get_type();
+        if expr_type == return_type {
+            Ok((Statement::Return(expr), loc))
+        } else {
+            Err((
+                ParserError::Typing(TypeError::InvalidReturnType(return_type, expr_type)),
+                loc,
+            ))
+        }
+    }
+
+    fn global_declaration(&mut self) -> LocResult<Statement> {
+        // Global declarations i.e function declarations are only allowed in the global program.
+        // This means functions cannot be defined inside functions.
+        match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
+            (Token::Subroutine, _) => {
+                self.tokens.next();
+                self.subroutine_declaration()
+            }
+            _ => self.local_declaration(),
+        }
+    }
 }
 
 impl<T> Iterator for Parser<T>
@@ -627,6 +737,6 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.tokens.peek()?; // Checks if there are any more tokens. If there are none, returns none.
-        Some(self.declaration())
+        Some(self.global_declaration())
     }
 }

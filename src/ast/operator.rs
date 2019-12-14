@@ -4,13 +4,14 @@ use super::token::Token;
 use super::types::{Type, TypeError, Typed};
 use crate::environment::EnvWrapper;
 use crate::interpreter::Interpreter;
+use crate::error::runtime::RuntimeError;
 
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum UnaryOperator {
     Not,
-    Minus,
+   Minus,
 }
 
 impl From<Token> for UnaryOperator {
@@ -38,7 +39,7 @@ impl UnaryOperator {
             },
         }
     }
-   pub fn evaluate(&self, expr: &Expression, env: EnvWrapper, interpreter: &Interpreter) -> Result<Literal, EvalError> {
+   pub fn evaluate(&self, expr: &Expression, env: EnvWrapper, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
         match self {
             UnaryOperator::Not => match expr.evaluate(env, interpreter)? {
                 Literal::Boolean(b) => Ok(Literal::Boolean(!b)),
@@ -72,13 +73,6 @@ pub enum BinaryOperator {
     Index
 }
 
-#[derive(Debug)]
-pub enum EvalError { // Implemented to avoid panics
-    DivisionByZero,
-    OutOfRange,
-    UndefinedVariable,
-    MustBeCalled
-}
 impl From<Token> for BinaryOperator {
     fn from(t: Token) -> Self {
         match t {
@@ -175,7 +169,7 @@ impl BinaryOperator {
         }
     }
 
-    pub fn evaluate(&self, expr1: &Expression, expr2: &Expression, env: EnvWrapper, interpreter: &Interpreter) -> Result<Literal, EvalError> {
+    pub fn evaluate(&self, expr1: &Expression, expr2: &Expression, env: EnvWrapper, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
         let (val1, val2) = (expr1.evaluate(Rc::clone(&env), interpreter)?, expr2.evaluate(Rc::clone(&env), interpreter)?);
         match self {
             BinaryOperator::Equality => Ok(Literal::Boolean(val1 == val2)),
@@ -225,22 +219,22 @@ impl BinaryOperator {
                 _ => unreachable!(),
             },
             BinaryOperator::Divide => match (val1, val2) {
-                (Literal::Integer(_a), Literal::Integer(0)) => Err(EvalError::DivisionByZero),
-                (Literal::Real(_a), Literal::Real(0.0)) => Err(EvalError::DivisionByZero),
+                (Literal::Integer(_a), Literal::Integer(0)) => Err(RuntimeError::DivisionByZero),
+                (Literal::Real(_a), Literal::Real(0.0)) => Err(RuntimeError::DivisionByZero),
                 (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Real((a / b) as f64)),
                 (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a / b)),
                 _ => unreachable!(),
             },
             BinaryOperator::IntDivide => match (val1, val2) {
-                (Literal::Integer(_a), Literal::Integer(0)) => Err(EvalError::DivisionByZero),
-                (Literal::Real(_a), Literal::Real(0.0)) => Err(EvalError::DivisionByZero),
+                (Literal::Integer(_a), Literal::Integer(0)) => Err(RuntimeError::DivisionByZero),
+                (Literal::Real(_a), Literal::Real(0.0)) => Err(RuntimeError::DivisionByZero),
                 (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a / b)),
                 (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Integer((a / b) as i64)),
                 _ => unreachable!(),
             },
             BinaryOperator::Mod => match (val1, val2) {
-                (Literal::Integer(_a), Literal::Integer(0)) => Err(EvalError::DivisionByZero),
-                (Literal::Real(_a), Literal::Real(0.0)) => Err(EvalError::DivisionByZero),
+                (Literal::Integer(_a), Literal::Integer(0)) => Err(RuntimeError::DivisionByZero),
+                (Literal::Real(_a), Literal::Real(0.0)) => Err(RuntimeError::DivisionByZero),
                 (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a % b)),
                 (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a % b)),
                 _ => unreachable!(),
@@ -248,7 +242,7 @@ impl BinaryOperator {
             BinaryOperator::Index => match (val1, val2) {
                 (Literal::List(a), Literal::Integer(b)) => match a.get(b as usize) {
                     Some(v) => Ok(v.clone()),
-                    None => Err(EvalError::OutOfRange)
+                    None => Err(RuntimeError::OutOfRange)
                 }
                 _ => unreachable!()
             }

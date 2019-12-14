@@ -1,18 +1,19 @@
 use super::literal::Literal;
-use super::operator::{BinaryOperator, EvalError, UnaryOperator};
+use super::operator::{BinaryOperator,  UnaryOperator};
 use super::types::{Type, Typed};
 use crate::environment::{EnvWrapper, Identifier};
 use crate::interpreter::Interpreter;
+use crate::error::runtime::RuntimeError;
 use std::convert::TryFrom;
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExprIdentifier {
     Variable(String),
     Index(Box<ExprIdentifier>, Box<Expression>), // Created from index expression, so is integer
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Literal(Literal),
     Binary {
@@ -53,7 +54,7 @@ impl Typed for Expression {
 }
 
 impl Expression {
-    pub fn evaluate(&self, env: EnvWrapper, interpreter: &Interpreter) -> Result<Literal, EvalError> {
+    pub fn evaluate(&self, env: EnvWrapper, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
         match self {
             Expression::Literal(lit) => Ok(lit.clone()),
             Expression::Binary { left, op, right } => op.evaluate(left, right, env, interpreter),
@@ -74,15 +75,14 @@ impl Expression {
                 Ok(val)
             }
             Expression::Subroutine(_, _) | Expression::NativeFunction(_, _) => {
-                Err(EvalError::MustBeCalled)
+                Err(RuntimeError::MustBeCalled)
             }
             Expression::Call { callee, args, .. } => {
-                let function = interpreter.get_callable(callee);
                 let evaluated_args: Vec<Literal> = args
                     .iter()
                     .map(|expr| expr.evaluate(Rc::clone(&env), interpreter))
                     .collect::<Result<_,_>>()?;
-               function.call(evaluated_args, interpreter)
+               interpreter.get_callable(callee).call(evaluated_args, interpreter)
             }
         }
     }
