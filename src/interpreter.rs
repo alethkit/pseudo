@@ -1,4 +1,4 @@
-use super::ast::callable::{Callable, NativeFunction, Subroutine};
+use super::ast::callable::{Callable, Subroutine, GLOBALS};
 use super::ast::literal::Literal;
 use super::ast::statement::Statement;
 use super::environment::{EnvWrapper, Environment};
@@ -15,11 +15,7 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        let globals = vec![("LEN", NativeFunction::Len)];
-        let mut functions = HashMap::new();
-        for (name, func) in globals {
-            functions.insert(name.to_owned(), Callable::Native(func));
-        }
+        let functions = GLOBALS.iter().cloned().map(|(name, f)| (name.to_string(), Callable::Native(f))).collect();
         Interpreter {
             functions,
             env: Rc::new(RefCell::new(Environment::new())),

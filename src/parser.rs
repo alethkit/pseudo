@@ -1,5 +1,5 @@
 use super::ast::{
-    callable::NativeFunction,
+    callable::{NativeFunction, GLOBALS},
     expression::{ExprIdentifier, Expression},
     literal::Literal,
     location::Location,
@@ -65,11 +65,7 @@ where
     T: Iterator<Item = (Token, Location)>,
 {
     fn from(tokens: T) -> Self {
-        let mut function_scope = HashMap::new();
-        function_scope.insert(
-            "LEN".to_owned(),
-            CallableTypeSpecifier::NativeFunction(NativeFunction::Len),
-        );
+        let function_scope = GLOBALS.iter().cloned().map(|(name, f)| (name.to_string(), CallableTypeSpecifier::NativeFunction(f))).collect();
         Parser {
             tokens: tokens.peekable(),
             type_scope: HashMap::new(),
