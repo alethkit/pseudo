@@ -82,6 +82,7 @@ impl Expression {
                     .iter()
                     .map(|expr| expr.evaluate(Rc::clone(&env), interpreter))
                     .collect::<Result<_,_>>()?;
+                println!("calling a func time!");
                interpreter.get_callable(callee).call(evaluated_args, interpreter)
             }
         }

@@ -486,12 +486,10 @@ where
         swap(&mut self.type_scope, &mut type_scope_placeholder);
         self.consume(Token::EndSubroutine)?;
 
-        if return_type != Type::Void && !body.iter().any(Parser::<T>::is_return_statement) {
-            // Although some static checking is done, subroutines cannot be guaranteed to always
-            // return a value.
-            // Example: A function with a while loop with a condition that is never met, and a 
-            // return statement inside the body.
-            // Thus, dynamic checking is also implemented
+        let return_discriminant =
+            discriminant(&Statement::Return(Expression::Literal(Literal::Integer(0)))); // Exists to compare with discriminant
+        if return_type != Type::Void && !Parser::<T>::is_return_statement()
+        {
             Err((ParserError::SubroutineRequiresReturn, loc))
         } else {
             Ok((
@@ -507,16 +505,16 @@ where
     }
 
     fn is_return_statement(statement: &Statement) -> bool {
-        match statement {
+        match statement  {
             Statement::Return(_) => true,
-            Statement::Expression(_)
-            | Statement::VarDeclaration(_, _)
-            | Statement::ConstDeclaraction(_, _) => false,
-            Statement::If { body, .. }
-            | Statement::While { body, .. }
-            | Statement::DoWhile { body, .. }
-            | Statement::For { body, .. } => body.iter().any(Parser::<T>::is_return_statement),
-            Statement::SubroutineDeclaration { .. } => unreachable!("No inner subroutines"),
+            Statement::Expression(_) | Statement::VarDeclaration(_,_) | Statement::ConstDeclaraction(_,_)=> false,
+            Statement::If{body, ..} |
+            Statement::While{body, ..}|
+            Statement::DoWhile{body, ..}|
+            Statement::For{body, ..}|
+            Statement::SubroutineDeclaration{body, ..}
+            => {body.iter().any(Parser::<T>::is_return_statement)}
+
         }
     }
 
@@ -551,6 +549,7 @@ where
         }
         Err(Parser::<T>::UnexpectedEOF)
     }
+
 
     fn type_hint(&mut self) -> LocResult<Type> {
         // What allows us to identify type errors
@@ -587,15 +586,12 @@ where
         let (condition, loc) = self.expression()?;
         self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Then)?;
-        let (body, _) = self.block_statement(&[Token::Else, Token::EndIf], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?;
+        let (body, _) =
+            self.block_statement(&[Token::Else, Token::EndIf], &mut |s| Parser::statement(s, return_type.clone()))?;
         let alternative =
             if let (Token::Else, _) = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
                 self.tokens.next();
-                Some(self.block_statement(&[Token::EndIf], &mut |s| {
-                    Parser::statement(s, return_type.clone())
-                })?)
+                Some(self.block_statement(&[Token::EndIf], &mut |s| Parser::statement(s, return_type.clone()))?)
             } else {
                 None
             };
@@ -614,17 +610,13 @@ where
         let (condition, loc) = self.expression()?;
         self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Do)?;
-        let (body, _) = self.block_statement(&[Token::EndWhile], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?;
+        let (body, _) = self.block_statement(&[Token::EndWhile], &mut |s| Parser::statement(s, return_type.clone()))?;
         self.consume(Token::EndWhile)?;
         Ok((Statement::While { condition, body }, loc))
     }
 
     fn do_while_statement(&mut self, return_type: Option<Type>) -> LocResult<Statement> {
-        let (body, _) = self.block_statement(&[Token::While], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?;
+        let (body, _) = self.block_statement(&[Token::While], &mut |s| Parser::statement(s, return_type.clone()))?;
         self.consume(Token::While)?;
         let (condition, loc) = self.expression()?;
         self.check_type(&condition, Type::Boolean, loc)?;
@@ -655,9 +647,7 @@ where
         };
         self.consume(Token::Do)?;
         self.type_scope.insert(loop_var.clone(), Type::Integer); // Adds loop variable to scope temporarily.
-        let (body, _) = self.block_statement(&[Token::EndFor], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?;
+        let (body, _) = self.block_statement(&[Token::EndFor], &mut  |s| Parser::statement(s, return_type.clone()))?;
         self.consume(Token::EndFor)?;
         self.type_scope.remove(&loop_var);
         Ok((
@@ -717,13 +707,14 @@ where
 
     fn return_statement(&mut self, return_type: Type) -> LocResult<Statement> {
         println!("hello!");
-        let (expr, loc) = if let Some((Token::SemiColon, _)) = self.tokens.peek() {
+        let (expr, loc) = if let Some((Token::SemiColon,_)) = self.tokens.peek() {
             let (_, loc_semicolon) = self.consume(Token::SemiColon)?;
             (Expression::Literal(Literal::Void), loc_semicolon)
         } else {
             let val = self.expression()?;
-            self.consume(Token::SemiColon)?;
+            self.consume(Token::SemiColon);
             val
+
         };
         println!("hi");
         let expr_type = expr.get_type();

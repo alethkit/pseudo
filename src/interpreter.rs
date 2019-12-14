@@ -88,14 +88,20 @@ impl Interpreter {
             },
             Statement::While { condition, body } => {
                 while let true = bool::from(condition.evaluate(Rc::clone(&env), self)?) {
-                    self.execute_block(&body, Rc::clone(&env))?;
+                    match self.execute_block(&body, Rc::clone(&env))? {
+                        Some(val) => return Ok(Some(val)),
+                        None => continue
+                    }
                 }
                 Ok(None)
             }
             Statement::DoWhile { condition, body } => {
                 self.execute_block(&body, Rc::clone(&env))?;
                 while let true = bool::from(condition.evaluate(Rc::clone(&env), self)?) {
-                    self.execute_block(&body, Rc::clone(&env))?;
+                    match self.execute_block(&body, Rc::clone(&env))? {
+                        Some(val) => return Ok(Some(val)),
+                        None => continue
+                    }
                 }
                 Ok(None)
             }
@@ -127,7 +133,10 @@ impl Interpreter {
                     loop_var_env
                         .borrow_mut()
                         .define(loop_var.to_string(), Literal::Integer(loop_val));
-                    self.execute_block(body, Rc::clone(&loop_var_env))?;
+                    match self.execute_block(&body, Rc::clone(&loop_var_env))? {
+                        Some(val) => return Ok(Some(val)),
+                        None => continue
+                    }
                 }
                 Ok(None)
             }
@@ -135,6 +144,7 @@ impl Interpreter {
                 name,
                 parameters,
                 body,
+                return_type,
                 ..
             } => {
                 self.functions.insert(
@@ -143,6 +153,7 @@ impl Interpreter {
                         name.clone(),
                         parameters.iter().map(|(name, _)| name).cloned().collect(),
                         body.clone(),
+                        return_type.clone()
                     )),
                 );
                 Ok(None)

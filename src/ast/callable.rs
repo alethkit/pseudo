@@ -28,16 +28,18 @@ pub struct Subroutine {
     name: String,
     parameters: Vec<String>,
     body: Vec<Statement>,
+    return_type: Type
 }
 
 impl Subroutine {
     
 
-    pub fn new(name: String, parameters: Vec<String>, body: Vec<Statement>) -> Self {
+    pub fn new(name: String, parameters: Vec<String>, body: Vec<Statement>, return_type: Type) -> Self {
         Subroutine {
             name,
             parameters,
-            body
+            body,
+            return_type
         }
     }
 
@@ -47,7 +49,13 @@ impl Subroutine {
         for (name, value) in parameter_arg_pairs {
             env.borrow_mut().define(name.to_owned(),value)
         }
-        Ok(interpreter.execute_block(&self.body, env)?.unwrap_or(Literal::Void))
+        let val = interpreter.execute_block(&self.body, env)?.unwrap_or(Literal::Void);
+        if val.get_type() == self.return_type {
+            Ok(val)
+        }
+        else {
+            Err(RuntimeError::IncorrectReturnExpression)
+        }
     }
 }
 

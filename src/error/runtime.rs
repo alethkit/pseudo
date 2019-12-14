@@ -5,6 +5,7 @@ pub enum RuntimeError {
     UndefinedVariable,
     MustBeCalled,
     RangeStepCannotBeZero,
-    InvalidRangeBound
+    InvalidRangeBound,
+    IncorrectReturnExpression
 }
 
