@@ -8,6 +8,9 @@ use crate::parser::ParserError;
 
 use std::convert::TryFrom;
 use std::mem::discriminant;
+use std::io;
+
+use rand::{Rng, thread_rng};
 
 #[derive(Debug, Clone)]
 pub enum Callable {
@@ -86,9 +89,12 @@ pub enum NativeFunction {
     RealToInt,
     CharToCode,
     CodeToChar,
+    RandomInt,
+    UserInput,
+    Output
 }
 
-pub const GLOBALS: [(&str, NativeFunction); 11] = [
+pub const GLOBALS: [(&str, NativeFunction); 14] = [
     ("LEN", NativeFunction::Len),
     ("POSITION", NativeFunction::Position),
     ("SUBSTRING", NativeFunction::Substring),
@@ -100,6 +106,9 @@ pub const GLOBALS: [(&str, NativeFunction); 11] = [
     ("REAL_TO_INT", NativeFunction::RealToInt),
     ("CHAR_TO_CODE", NativeFunction::CharToCode),
     ("CODE_TO_CHAR", NativeFunction::CodeToChar),
+    ("RANDOM_INT", NativeFunction::RandomInt),
+    ("USERINPUT", NativeFunction::UserInput),
+    ("OUTPUT", NativeFunction::Output)
 ];
 
 impl NativeFunction {
@@ -108,10 +117,12 @@ impl NativeFunction {
             Self::Len => unreachable!("Has special validation"),
             Self::Position => vec![Type::Str, Type::Character],
             Self::Substring => vec![Type::Integer, Type::Integer, Type::Str],
-            Self::StringToInt | Self::StringToReal => vec![Type::Str],
+            Self::StringToInt | Self::StringToReal | Self::Output => vec![Type::Str],
             Self::IntToString | Self::IntToReal | Self::CodeToChar => vec![Type::Integer],
             Self::RealToString | Self::RealToInt => vec![Type::Real],
             Self::CharToCode => vec![Type::Character],
+            Self::RandomInt => vec![Type::Integer, Type::Integer],
+            Self::UserInput => vec![],
         }
     }
     pub fn validate(&self, args_list: &Vec<Type>) -> Result<(), ParserError> {
@@ -186,6 +197,23 @@ impl NativeFunction {
                 }
                 _ => unreachable!("Should have been type checked"),
             },
+            Self::RandomInt => match (&arguments[0], &arguments[1]) {
+                (&Literal::Integer(lower), &Literal::Integer(upper)) => {
+                    if upper < lower {
+                        Err(RuntimeError::InvalidRangeBound)
+                    }
+                    else {
+                        Ok(Literal::Integer(thread_rng().gen_range(lower, upper+1)))
+                    }
+                }
+                _ => unreachable!("Should have been type checked"),
+            },
+            Self::UserInput => {
+                let mut input = String::new();
+                io::stdin().read_line(&mut input)?;
+                Ok(Literal::Str(input.trim().to_string()))
+
+            }
             _ => match (self, &arguments[0]) {
                 (Self::StringToInt, Literal::Str(string)) => string
                     .parse::<i64>()
@@ -207,6 +235,10 @@ impl NativeFunction {
                     char::try_from(unsigned)
                         .map_err(RuntimeError::from)
                         .map(Literal::Character)
+                },
+                (Self::Output, Literal::Str(string)) => {
+                    println!("{}", string);
+                    Ok(Literal::Void)
                 }
                 _ => unreachable!("Should have been type checked"),
             },
@@ -217,12 +249,14 @@ impl NativeFunction {
 impl Typed for NativeFunction {
     fn get_type(&self) -> Type {
         match self {
-            Self::Len | Self::Position | Self::StringToInt | Self::RealToInt | Self::CharToCode => {
+            Self::Len | Self::Position | Self::StringToInt | Self::RealToInt | Self::CharToCode | Self::RandomInt => {
                 Type::Integer
             }
             Self::Substring | Self::IntToString | Self::RealToString => Type::Str,
             Self::StringToReal | Self::IntToReal => Type::Real,
             Self::CodeToChar => Type::Character,
+            Self::UserInput => Type::Str,
+            Self::Output => Type::Void
         }
     }
 }

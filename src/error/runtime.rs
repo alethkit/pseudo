@@ -1,5 +1,6 @@
 use core::num::{ParseFloatError, ParseIntError};
 use std::char::CharTryFromError;
+use std::io::Error as IoError;
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -12,7 +13,8 @@ pub enum RuntimeError {
     IncorrectReturnExpression,
     InvalidInteger,
     InvalidReal,
-    InvalidCharacter
+    InvalidCharacter,
+    IOError,
 }
 
 impl From<ParseIntError> for RuntimeError {
@@ -28,5 +30,10 @@ impl From<ParseFloatError> for RuntimeError {
 impl From<CharTryFromError> for RuntimeError {
     fn from(_: CharTryFromError) -> Self {
         Self::InvalidCharacter
+    }
+}
+impl From<IoError> for RuntimeError {
+    fn from(_: IoError) -> Self {
+        Self::IOError
     }
 }
