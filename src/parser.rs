@@ -113,8 +113,6 @@ macro_rules! recursive_descent {
                     let right = $self.$rhs()?.0;
                     $add
                     let op = BinaryOperator::from(op_token);
-                    println!("Left: {:#?}", expr);
-                    println!("Right: {:#?}", right);
                     match op.validate(&expr, &right) {
                         Ok(_) => {
                             expr = Expression::Binary {
@@ -197,7 +195,6 @@ where
             (Token::Equals, _) => {
                 let (_, loc2) = self.tokens.next().unwrap();
                 let (val, _) = self.assignment()?;
-                println!("{:#?}", expr);
                 match expr {
                     Expression::Variable(name, t) => {
                         self.check_type(&val, t, loc2)?;
@@ -265,7 +262,6 @@ where
     }
 
     fn unary(&mut self) -> LocResult<Expression> {
-        println!("{:#?}", self.tokens.peek());
         match self.tokens.peek() {
             Some((Token::Not, _)) | Some((Token::Minus, _)) => {
                 let (op_token, loc) = self.tokens.next().unwrap();
@@ -282,8 +278,6 @@ where
     fn call(&mut self) -> LocResult<Expression> {
         let (expr, loc) = self.index()?;
         if let Some((Token::LeftParenthesis, _)) = self.tokens.peek() {
-            println!("call time!");
-            println!("{:#?}", expr);
             let (_, _) = self.tokens.next().unwrap();
             let arguments = if let Some((Token::RightParenthesis, _)) = self.tokens.peek() {
                 self.tokens.next();
@@ -413,7 +407,6 @@ where
         self.consume(Token::Equals)?;
         let (var_val, _) = self.expression()?;
         self.consume(Token::SemiColon)?;
-        println!("{:#?}", var_val);
         self.check_type(&var_val, var_type.clone(), loc)?;
         if self.function_scope.contains_key(&var_name) {
             Err((ParserError::AlreadyDefinedAsFunction, loc))
@@ -447,10 +440,6 @@ where
             _ => unreachable!("consume checks type"),
         };
         self.consume(Token::LeftParenthesis)?;
-        println!(
-            "{:#?}",
-            self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)?.0
-        );
         let parameters = if let Some((Token::RightParenthesis, _)) = self.tokens.peek() {
             self.tokens.next();
             Vec::new()
@@ -541,7 +530,6 @@ where
                 return Ok((block, *loc));
             } else {
                 let stmt = fallback(self)?;
-                println!("stmt: {:#?}", stmt);
                 block.push(stmt.0)
             }
         }
@@ -712,7 +700,6 @@ where
     }
 
     fn return_statement(&mut self, return_type: Type) -> LocResult<Statement> {
-        println!("hello!");
         let (expr, loc) = if let Some((Token::SemiColon, _)) = self.tokens.peek() {
             let (_, loc_semicolon) = self.consume(Token::SemiColon)?;
             (Expression::Literal(Literal::Void), loc_semicolon)
@@ -721,7 +708,6 @@ where
             self.consume(Token::SemiColon)?;
             val
         };
-        println!("hi");
         let expr_type = expr.get_type();
         if expr_type == return_type {
             Ok((Statement::Return(expr), loc))

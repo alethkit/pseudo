@@ -43,23 +43,19 @@ impl Interpreter {
         match statement {
             Statement::Expression(expr) => {
                 let val = expr.evaluate(env, self)?;
-                println!("{:#?}", val);
                 Ok(None)
             }
             Statement::Return(expr) => {
                 let val = expr.evaluate(env, self)?;
-                println!("{:#?}", val);
                 Ok(Some(val))
             }
             Statement::ConstDeclaraction(name, expr) => {
                 let val = expr.evaluate(Rc::clone(&env), self)?;
-                println!("Declare constant {:#?} with {:#?}", name, val);
                 env.borrow_mut().define(name.to_string(), val);
                 Ok(None)
             }
             Statement::VarDeclaration(name, expr) => {
                 let val = expr.evaluate(Rc::clone(&env), self)?;
-                println!("Declare variable {:#?} with {:#?}", name, val);
                 env.borrow_mut().define(name.to_string(), val);
                 Ok(None)
             }
@@ -70,10 +66,8 @@ impl Interpreter {
             } => match condition.evaluate(Rc::clone(&env), self)? {
                 Literal::Boolean(b) => {
                     if b {
-                        println!("true");
                         self.execute_block(&body, env)
                     } else {
-                        println!("false");
                         match alternative {
                             Some(alt) => self.execute_block(&alt, env),
                             None => Ok(None),
