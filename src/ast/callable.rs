@@ -8,9 +8,9 @@ use crate::parser::ParserError;
 
 use std::convert::TryFrom;
 use std::mem::discriminant;
-use std::io;
 
-use rand::{Rng, thread_rng};
+use gtk::prelude::{DialogExt, EntryExt, TextBufferExt, ContainerExt, WidgetExt};
+use rand::{thread_rng, Rng};
 
 #[derive(Debug, Clone)]
 pub enum Callable {
@@ -27,7 +27,7 @@ impl Callable {
     ) -> Result<Literal, RuntimeError> {
         match self {
             Self::Subroutine(func) => func.call(args, interpreter),
-            Self::Native(nat_func) => nat_func.call(args), // A native function does not need to call other functions to work
+            Self::Native(nat_func) => nat_func.call(args, interpreter),
         }
     }
 }
@@ -91,7 +91,7 @@ pub enum NativeFunction {
     CodeToChar,
     RandomInt,
     UserInput,
-    Output
+    Output,
 }
 
 pub const GLOBALS: [(&str, NativeFunction); 14] = [
@@ -108,7 +108,7 @@ pub const GLOBALS: [(&str, NativeFunction); 14] = [
     ("CODE_TO_CHAR", NativeFunction::CodeToChar),
     ("RANDOM_INT", NativeFunction::RandomInt),
     ("USERINPUT", NativeFunction::UserInput),
-    ("OUTPUT", NativeFunction::Output)
+    ("OUTPUT", NativeFunction::Output),
 ];
 
 impl NativeFunction {
@@ -164,7 +164,11 @@ impl NativeFunction {
             }
         }
     }
-    pub fn call(&self, arguments: Vec<Literal>) -> Result<Literal, RuntimeError> {
+    pub fn call(
+        &self,
+        arguments: Vec<Literal>,
+        interpreter: &mut Interpreter,
+    ) -> Result<Literal, RuntimeError> {
         match self {
             Self::Len => match &arguments[0] {
                 Literal::Str(val) => Ok(Literal::Integer(val.len() as i64)),
@@ -201,18 +205,28 @@ impl NativeFunction {
                 (&Literal::Integer(lower), &Literal::Integer(upper)) => {
                     if upper < lower {
                         Err(RuntimeError::InvalidRangeBound)
-                    }
-                    else {
-                        Ok(Literal::Integer(thread_rng().gen_range(lower, upper+1)))
+                    } else {
+                        Ok(Literal::Integer(thread_rng().gen_range(lower, upper + 1)))
                     }
                 }
                 _ => unreachable!("Should have been type checked"),
             },
             Self::UserInput => {
-                let mut input = String::new();
-                io::stdin().read_line(&mut input)?;
-                Ok(Literal::Str(input.trim().to_string()))
+                let dialog = gtk::Dialog::new_with_buttons(
+                    Some("Input requested"),
+                    Some(&interpreter.get_window()),
+                    gtk::DialogFlags::MODAL | gtk::DialogFlags::DESTROY_WITH_PARENT,
+                    &[("Send", gtk::ResponseType::Accept)],
+                );
+                let area = dialog.get_content_area();
+                let user_entry = gtk::Entry::new();
+                area.add(&user_entry);
+                dialog.show_all();
+                dialog.run();
+                let contents = user_entry.get_text().unwrap();
+                dialog.destroy();
 
+                Ok(Literal::Str(contents.trim().to_string()))
             }
             _ => match (self, &arguments[0]) {
                 (Self::StringToInt, Literal::Str(string)) => string
@@ -235,9 +249,10 @@ impl NativeFunction {
                     char::try_from(unsigned)
                         .map_err(RuntimeError::from)
                         .map(Literal::Character)
-                },
+                }
                 (Self::Output, Literal::Str(string)) => {
-                    println!("{}", string);
+                    let output = interpreter.get_output_buf();
+                    output.insert(&mut output.get_end_iter(), &(string.to_owned() + "\n"));
                     Ok(Literal::Void)
                 }
                 _ => unreachable!("Should have been type checked"),
@@ -249,14 +264,17 @@ impl NativeFunction {
 impl Typed for NativeFunction {
     fn get_type(&self) -> Type {
         match self {
-            Self::Len | Self::Position | Self::StringToInt | Self::RealToInt | Self::CharToCode | Self::RandomInt => {
-                Type::Integer
-            }
+            Self::Len
+            | Self::Position
+            | Self::StringToInt
+            | Self::RealToInt
+            | Self::CharToCode
+            | Self::RandomInt => Type::Integer,
             Self::Substring | Self::IntToString | Self::RealToString => Type::Str,
             Self::StringToReal | Self::IntToReal => Type::Real,
             Self::CodeToChar => Type::Character,
             Self::UserInput => Type::Str,
-            Self::Output => Type::Void
+            Self::Output => Type::Void,
         }
     }
 }

@@ -24,23 +24,24 @@ impl Iterator for LocatableChars<'_> {
     type Item = (char, Location);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(c) = self.chars.peek() {
-            if *c == '\n' {
+        match self.chars.peek()? {
+            '\n' => {
+                let cur_loc = Location::new(self.line, self.column);
                 self.line += 1;
                 self.column = 0;
                 self.chars.next();
-            } else {
+                Some((' ',cur_loc))
+            }
+            _ => {
                 self.column += 1;
                 let c = self.chars.next().unwrap();
-                return Some((c, Location::new(self.line, self.column)));
+                Some((c, Location::new(self.line, self.column)))
             }
         }
-        None
     }
 }
 
 type TokenResult = Result<Token, LexError>;
-pub type LocatableTokenResult = (TokenResult, Location);
 
 pub struct Lexer<'a> {
     chars: Peekable<LocatableChars<'a>>,
@@ -60,16 +61,14 @@ impl<'a> Lexer<'a> {
             if c.is_whitespace() {
                 self.chars.next();
             } else if *c == '#' {
-                let current_line = l.line; 
+                let current_line = l.line;
                 while let Some((_sub_c, sub_l)) = self.chars.peek() {
                     if sub_l.line == current_line {
                         self.chars.next();
-                    }
-                    else {
+                    } else {
                         return;
                     }
-                }    
-
+                }
             } else {
                 return;
             }
@@ -124,7 +123,6 @@ impl<'a> Lexer<'a> {
             _ => Err(LexError::UnterminatedString),
         }
     }
-
 }
 
 impl Iterator for Lexer<'_> {
@@ -242,8 +240,8 @@ mod tests {
             Literal(literal::Literal::Real(12.34)),
             Literal(literal::Literal::Str(std::string::String::from("bob"))),
             Literal(literal::Literal::Character('c')),
-            Literal(literal::Literal::Boolean(true)),  
-            Literal(literal::Literal::Boolean(false)),  
+            Literal(literal::Literal::Boolean(true)),
+            Literal(literal::Literal::Boolean(false)),
             // Identifiers
             VarIdentifier(std::string::String::from("test_var")), // Identifier used as postfix to tell apart from respective keywords
             ConstIdentifier(std::string::String::from("PI")),
@@ -316,5 +314,4 @@ mod tests {
     fn minus() {
         assert_single_token("-", &Token::Minus);
     }
-
 }

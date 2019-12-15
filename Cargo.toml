@@ -1,6 +1,6 @@
 [package]
 name = "pseudocode"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["aleph"]
 edition = "2018"
 
@@ -9,3 +9,11 @@ edition = "2018"
 [dependencies]
 peeking_take_while = "^0.1.2"
 rand = "^0.7.2"
+glib = ""
+sourceview = "0.8.0"
+gio = ""
+
+[dependencies.gtk]
+version = ""
+features = ["v3_20"]
+

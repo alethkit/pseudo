@@ -6,21 +6,35 @@ use super::error::runtime::RuntimeError;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use gtk::{TextBuffer, Window};
 
 pub type FunctionScope = HashMap<String, Callable>;
 pub struct Interpreter {
     env: EnvWrapper,
     functions: FunctionScope,
+    output_buf: TextBuffer,
+    window: Window
 }
 
 impl Interpreter {
-    pub fn new() -> Self {
+    pub fn new(buf: TextBuffer, win: Window) -> Self {
         let functions = GLOBALS.iter().cloned().map(|(name, f)| (name.to_string(), Callable::Native(f))).collect();
         Interpreter {
             functions,
             env: Rc::new(RefCell::new(Environment::new())),
+            output_buf: buf,
+            window: win
         }
     }
+
+    pub fn get_output_buf(&self) -> TextBuffer {
+        self.output_buf.clone()
+    }
+
+    pub fn get_window(&self) -> Window {
+        self.window.clone()
+    }
+
 
     pub fn get_callable(&self, name: &str) -> Callable {
         self.functions
