@@ -2,19 +2,22 @@ mod ast;
 mod environment;
 mod error;
 mod interpreter;
+mod io_provider;
 mod lexer;
 mod parser;
-use interpreter::Interpreter;
-use lexer::{Lexer, LocatableChars};
-use parser::Parser;
 use gio::prelude::*;
 use gtk::prelude::*;
+use interpreter::Interpreter;
+use io_provider::{GUIIOProvider, IOProvider};
+use lexer::{Lexer, LocatableChars};
+use parser::Parser;
 use std::env::args;
 use std::fs::{read_to_string, File};
 use std::io::Write;
 use std::path::Path;
 
 fn create_message_dialog(win: gtk::Window, msg: &str) {
+    //Used for unexpected errors
     let diag = gtk::MessageDialog::new(
         Some(&win),
         gtk::DialogFlags::empty(),
@@ -27,7 +30,7 @@ fn create_message_dialog(win: gtk::Window, msg: &str) {
 }
 
 fn build_ui(app: &gtk::Application) {
-    let _dummy = sourceview::View::new();
+    let _dummy = sourceview::View::new(); // Used to register SourceView for the builder.
     let builder = gtk::Builder::new_from_file(&Path::new("./src/main.glade"));
     let window: gtk::Window = builder.get_object("main_window").unwrap();
     let open_file_button: gtk::Button = builder.get_object("open_file_button").unwrap();
@@ -36,6 +39,7 @@ fn build_ui(app: &gtk::Application) {
     let input_view: sourceview::View = builder.get_object("source_view").unwrap();
     let window_clone = window.clone();
     open_file_button.connect_clicked(move |_| {
+        // Adds functionality to the open file button
         let dialog = gtk::FileChooserNative::new(
             Some("Select a file"),
             Some(&window_clone),
@@ -56,13 +60,14 @@ fn build_ui(app: &gtk::Application) {
                 return;
             }
         };
-        let buf = input_view.get_buffer().unwrap();
+        let buf = input_view.get_buffer().unwrap(); // Inserts file contents in input view
         buf.insert(&mut buf.get_start_iter(), &file)
     });
     let window_clone = window.clone();
     let input_view: sourceview::View = builder.get_object("source_view").unwrap();
     let input_clone = input_view.clone();
     save_file_button.connect_clicked(move |_| {
+        // Adds functionality to the save file button
         let dialog = gtk::FileChooserNative::new(
             Some("Select a file"),
             Some(&window_clone),
@@ -88,6 +93,7 @@ fn build_ui(app: &gtk::Application) {
             }
         };
         match file.write_all(contents.as_str().as_bytes()) {
+            // Inserts input view contents in file
             Ok(_) => (),
             Err(e) => create_message_dialog(window_clone.clone(), &e.to_string()),
         };
@@ -97,41 +103,41 @@ fn build_ui(app: &gtk::Application) {
     run_file_button.connect_clicked(move |_| {
         let buf = input_clone.get_buffer().unwrap();
         let output_buf = output_view.get_buffer().unwrap();
-        output_buf.delete(&mut output_buf.get_start_iter(), &mut output_buf.get_end_iter());
+        output_buf.delete(
+            &mut output_buf.get_start_iter(),
+            &mut output_buf.get_end_iter(),
+        );
+        let gui_io = GUIIOProvider::new(output_buf.clone(), window_clone.clone());
         let contents = buf
             .get_text(&buf.get_start_iter(), &buf.get_end_iter(), false)
             .unwrap();
-        let chars = LocatableChars::from(contents.as_str());
-        let lex = Lexer::from(chars);
-        let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(|(r, _l)| r.is_ok());
-        if errors.is_empty() {
-            let pars = Parser::from(tokens.into_iter().map(|(r, l)| (r.unwrap(), l)));
-            let program: Result<Vec<_>, _> = pars.collect();
-            match program {
-                Ok(stmts) => {
-                    let mut inter = Interpreter::new(output_buf.clone(), window_clone.clone());
-                    if let Err(e) = inter.execute(&stmts.into_iter().map(|c| c.0).collect()) {
-                        print_err(output_buf, &format!("Runtime error: {:#?}", e));
-                    }
-                }
-                Err(e) => print_err(output_buf, &format!("Error: {:#?}", e)),
-            }
-        } else {
-            let err_string = format!("Errors: {:#?}", errors);
-            print_err(output_buf, &err_string);
-
-
-
-        }
+        run_program(&contents, gui_io)
     });
     window.set_application(Some(app));
     window.show_all();
 }
 
-
-fn print_err(buf: gtk::TextBuffer, msg: &str) {
-    let erred_string = "<span foreground=\"red\">".to_owned() + msg + "\n</span>";
-    buf.insert_markup(&mut buf.get_end_iter(), &erred_string);
+fn run_program(contents: &str, provider: impl IOProvider + Clone + 'static) {
+    //Runs the program given and interacts with the user via IOProvider.
+    let chars = LocatableChars::from(contents);
+    let lex = Lexer::from(chars);
+    let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(|(r, _l)| r.is_ok());
+    if errors.is_empty() {
+        let pars = Parser::from(tokens.into_iter().map(|(r, l)| (r.unwrap(), l)));
+        let program: Result<Vec<_>, _> = pars.collect();
+        match program {
+            Ok(stmts) => {
+                let mut inter = Interpreter::new(Box::new(provider.clone()));
+                if let Err(e) = inter.execute(&stmts.into_iter().map(|c| c.0).collect()) {
+                    provider.show_err(&format!("Runtime error: {:#?}", e));
+                }
+            }
+            Err(e) => provider.show_err(&format!("Error: {:#?}", e)),
+        }
+    } else {
+        let err_string = format!("Errors: {:#?}", errors);
+        provider.show_err(&err_string);
+    }
 }
 
 fn main() {
@@ -141,4 +147,3 @@ fn main() {
     });
     application.run(&args().collect::<Vec<_>>());
 }
-

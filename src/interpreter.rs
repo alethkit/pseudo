@@ -3,38 +3,35 @@ use super::ast::literal::Literal;
 use super::ast::statement::Statement;
 use super::environment::{EnvWrapper, Environment};
 use super::error::runtime::RuntimeError;
+use super::io_provider::IOProvider;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use gtk::{TextBuffer, Window};
 
 pub type FunctionScope = HashMap<String, Callable>;
 pub struct Interpreter {
     env: EnvWrapper,
     functions: FunctionScope,
-    output_buf: TextBuffer,
-    window: Window
+    io_provider: Box<dyn IOProvider>
 }
 
 impl Interpreter {
-    pub fn new(buf: TextBuffer, win: Window) -> Self {
+    pub fn new(io_provider: Box<dyn IOProvider>) -> Self {
         let functions = GLOBALS.iter().cloned().map(|(name, f)| (name.to_string(), Callable::Native(f))).collect();
         Interpreter {
             functions,
             env: Rc::new(RefCell::new(Environment::new())),
-            output_buf: buf,
-            window: win
+            io_provider
         }
     }
 
-    pub fn get_output_buf(&self) -> TextBuffer {
-        self.output_buf.clone()
+    pub fn show_line(&self, line_to_show: &str) {
+        self.io_provider.show_line(line_to_show)
     }
 
-    pub fn get_window(&self) -> Window {
-        self.window.clone()
+    pub fn get_line(&self) -> Result<String, RuntimeError> {
+        self.io_provider.get_line()
     }
-
 
     pub fn get_callable(&self, name: &str) -> Callable {
         self.functions

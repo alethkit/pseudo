@@ -9,7 +9,6 @@ use crate::parser::ParserError;
 use std::convert::TryFrom;
 use std::mem::discriminant;
 
-use gtk::prelude::{DialogExt, EntryExt, TextBufferExt, ContainerExt, WidgetExt};
 use rand::{thread_rng, Rng};
 
 #[derive(Debug, Clone)]
@@ -212,21 +211,7 @@ impl NativeFunction {
                 _ => unreachable!("Should have been type checked"),
             },
             Self::UserInput => {
-                let dialog = gtk::Dialog::new_with_buttons(
-                    Some("Input requested"),
-                    Some(&interpreter.get_window()),
-                    gtk::DialogFlags::MODAL | gtk::DialogFlags::DESTROY_WITH_PARENT,
-                    &[("Send", gtk::ResponseType::Accept)],
-                );
-                let area = dialog.get_content_area();
-                let user_entry = gtk::Entry::new();
-                area.add(&user_entry);
-                dialog.show_all();
-                dialog.run();
-                let contents = user_entry.get_text().unwrap();
-                dialog.destroy();
-
-                Ok(Literal::Str(contents.trim().to_string()))
+                Ok(Literal::Str(interpreter.get_line()?.to_string()))
             }
             _ => match (self, &arguments[0]) {
                 (Self::StringToInt, Literal::Str(string)) => string
@@ -251,8 +236,7 @@ impl NativeFunction {
                         .map(Literal::Character)
                 }
                 (Self::Output, Literal::Str(string)) => {
-                    let output = interpreter.get_output_buf();
-                    output.insert(&mut output.get_end_iter(), &(string.to_owned() + "\n"));
+                    interpreter.show_line(string);
                     Ok(Literal::Void)
                 }
                 _ => unreachable!("Should have been type checked"),
