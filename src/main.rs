@@ -30,7 +30,8 @@ fn create_message_dialog(win: gtk::Window, msg: &str) {
 }
 
 fn build_ui(app: &gtk::Application) {
-    let _dummy = sourceview::View::new(); // Used to register SourceView for the builder.
+    // Used to register SourceView for the builder.
+    let _dummy = sourceview::View::new();
     let builder = gtk::Builder::new_from_file(&Path::new("./src/main.glade"));
     let window: gtk::Window = builder.get_object("main_window").unwrap();
     let open_file_button: gtk::Button = builder.get_object("open_file_button").unwrap();
@@ -60,7 +61,8 @@ fn build_ui(app: &gtk::Application) {
                 return;
             }
         };
-        let buf = input_view.get_buffer().unwrap(); // Inserts file contents in input view
+        // Inserts file contents in input view
+        let buf = input_view.get_buffer().unwrap();
         buf.insert(&mut buf.get_start_iter(), &file)
     });
     let window_clone = window.clone();
