@@ -113,10 +113,10 @@ pub const GLOBALS: [(&str, NativeFunction); 14] = [
 impl NativeFunction {
     fn expected_args(&self) -> Vec<Type> {
         match self {
-            Self::Len => unreachable!("Has special validation"),
+            Self::Len | Self::Output => unreachable!("Has special validation"),
             Self::Position => vec![Type::Str, Type::Character],
             Self::Substring => vec![Type::Integer, Type::Integer, Type::Str],
-            Self::StringToInt | Self::StringToReal | Self::Output => vec![Type::Str],
+            Self::StringToInt | Self::StringToReal  => vec![Type::Str],
             Self::IntToString | Self::IntToReal | Self::CodeToChar => vec![Type::Integer],
             Self::RealToString | Self::RealToInt => vec![Type::Real],
             Self::CharToCode => vec![Type::Character],
@@ -139,7 +139,20 @@ impl NativeFunction {
                         ))),
                     }
                 }
-            }
+            },
+            Self::Output => {
+                if args_list.len() != 1 {
+                    Err(ParserError::IncorrectFunctionArity(1, args_list.len()))
+                } else {
+                    match args_list.iter().next().expect("There should be 1").clone() {
+                        Type::Str | Type::Character => Ok(()),
+                        t => Err(ParserError::Typing(TypeError::SingleExpectedOneOf(
+                            vec![Type::Str, Type::Character],
+                            t,
+                        ))),
+                    }
+                }
+            },
             _ => {
                 let expected = self.expected_args();
                 if args_list.len() != expected.len() {
@@ -237,6 +250,10 @@ impl NativeFunction {
                 }
                 (Self::Output, Literal::Str(string)) => {
                     interpreter.show_line(string);
+                    Ok(Literal::Void)
+                },
+                (Self::Output, Literal::Character(c)) => {
+                    interpreter.show_line(&c.to_string());
                     Ok(Literal::Void)
                 }
                 _ => unreachable!("Should have been type checked"),
