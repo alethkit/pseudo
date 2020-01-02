@@ -25,5 +25,3 @@ impl fmt::Display for LexError {
 }
 
 impl Error for LexError {}
-
-//impl From<Result<_,LexError> for LexError {}
