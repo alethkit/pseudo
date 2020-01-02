@@ -1,5 +1,5 @@
 use super::ast::expression::ExprIdentifier;
-use super::ast::literal::Literal;
+use super::ast::Literal;
 use super::interpreter::Interpreter;
 use super::error::RuntimeError;
 use std::cell::RefCell;

@@ -1,6 +1,5 @@
 use super::ast::callable::{Callable, Subroutine, GLOBALS};
-use super::ast::literal::Literal;
-use super::ast::statement::Statement;
+use super::ast::{Literal, Expression, Statement};
 use super::environment::{EnvWrapper, Environment};
 use super::error::RuntimeError;
 use crate::io_provider::IOProvider;
@@ -46,6 +45,10 @@ impl Interpreter {
         Ok(())
     }
 
+    pub fn evaluate_expression(&mut self, expr: &Expression) -> Result<Literal, RuntimeError> {
+        expr.evaluate(Rc::clone(&self.env), self)
+    }
+
     fn execute_statement(
         &mut self,
         statement: &Statement,
@@ -53,7 +56,7 @@ impl Interpreter {
     ) -> Result<Option<Literal>, RuntimeError> {
         match statement {
             Statement::Expression(expr) => {
-                let val = expr.evaluate(env, self)?;
+                expr.evaluate(env, self)?;
                 Ok(None)
             }
             Statement::Return(expr) => {

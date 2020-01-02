@@ -1,10 +1,10 @@
 use super::ast::{
     callable::{NativeFunction, GLOBALS},
     expression::{ExprIdentifier, Expression},
-    literal::Literal,
-    location::Location,
+    Literal,
+    Location,
     operator::{BinaryOperator, UnaryOperator},
-    statement::Statement,
+    Statement,
     Token,
     types::{Type, Typed},
 };

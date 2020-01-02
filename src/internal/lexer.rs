@@ -1,4 +1,4 @@
-use super::ast::{literal::Literal, location::Location, Token};
+use super::ast::{Literal, Location, Token};
 use super::error::LexError;
 use peeking_take_while::PeekableExt;
 use std::iter::Peekable;
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn token_tests() {
-        use super::super::ast::literal;
+        use super::super::ast::Literal as Lit;
         use Token::*;
         let token_strs = vec![
             "12",
@@ -236,12 +236,12 @@ mod tests {
             "->",
         ];
         let token_vals = vec![
-            Literal(literal::Literal::Integer(12)),
-            Literal(literal::Literal::Real(12.34)),
-            Literal(literal::Literal::Str(std::string::String::from("bob"))),
-            Literal(literal::Literal::Character('c')),
-            Literal(literal::Literal::Boolean(true)),
-            Literal(literal::Literal::Boolean(false)),
+            Literal(Lit::Integer(12)),
+            Literal(Lit::Real(12.34)),
+            Literal(Lit::Str(std::string::String::from("bob"))),
+            Literal(Lit::Character('c')),
+            Literal(Lit::Boolean(true)),
+            Literal(Lit::Boolean(false)),
             // Identifiers
             VarIdentifier(std::string::String::from("test_var")), // Identifier used as postfix to tell apart from respective keywords
             ConstIdentifier(std::string::String::from("PI")),

@@ -12,3 +12,5 @@ pub use parser::Parser;
 // io_provider requires access to only RuntimeError, so the rest of the module is kept private
 pub use error::RuntimeError;
 
+pub use error::PseudocodeError;
+
