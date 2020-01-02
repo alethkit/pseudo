@@ -1,3 +1,4 @@
+use super::super::ast::Type;
 
 #[derive(Debug)]
 pub enum TypeError{

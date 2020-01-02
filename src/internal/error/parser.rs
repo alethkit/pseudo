@@ -1,4 +1,5 @@
-
+use super::TypeError;
+use super::super::ast::Token;
 
 #[derive(Debug)]
 pub enum ParserError {

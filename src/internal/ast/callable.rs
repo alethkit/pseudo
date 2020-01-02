@@ -1,10 +1,9 @@
+use super::super::environment::Environment;
+use super::super::Interpreter;
+use super::error::{ParserError, RuntimeError, TypeError};
 use super::literal::Literal;
 use super::statement::Statement;
-use super::types::{Type, TypeError, Typed};
-use crate::environment::Environment;
-use crate::error::runtime::RuntimeError;
-use crate::interpreter::Interpreter;
-use crate::parser::ParserError;
+use super::types::{Type, Typed};
 
 use std::convert::TryFrom;
 use std::mem::discriminant;
@@ -116,7 +115,7 @@ impl NativeFunction {
             Self::Len | Self::Output => unreachable!("Has special validation"),
             Self::Position => vec![Type::Str, Type::Character],
             Self::Substring => vec![Type::Integer, Type::Integer, Type::Str],
-            Self::StringToInt | Self::StringToReal  => vec![Type::Str],
+            Self::StringToInt | Self::StringToReal => vec![Type::Str],
             Self::IntToString | Self::IntToReal | Self::CodeToChar => vec![Type::Integer],
             Self::RealToString | Self::RealToInt => vec![Type::Real],
             Self::CharToCode => vec![Type::Character],
@@ -139,7 +138,7 @@ impl NativeFunction {
                         ))),
                     }
                 }
-            },
+            }
             Self::Output => {
                 if args_list.len() != 1 {
                     Err(ParserError::IncorrectFunctionArity(1, args_list.len()))
@@ -152,7 +151,7 @@ impl NativeFunction {
                         ))),
                     }
                 }
-            },
+            }
             _ => {
                 let expected = self.expected_args();
                 if args_list.len() != expected.len() {
@@ -223,9 +222,7 @@ impl NativeFunction {
                 }
                 _ => unreachable!("Should have been type checked"),
             },
-            Self::UserInput => {
-                Ok(Literal::Str(interpreter.get_line()?.to_string()))
-            }
+            Self::UserInput => Ok(Literal::Str(interpreter.get_line()?.to_string())),
             _ => match (self, &arguments[0]) {
                 (Self::StringToInt, Literal::Str(string)) => string
                     .parse::<i64>()
@@ -251,7 +248,7 @@ impl NativeFunction {
                 (Self::Output, Literal::Str(string)) => {
                     interpreter.show_line(string);
                     Ok(Literal::Void)
-                },
+                }
                 (Self::Output, Literal::Character(c)) => {
                     interpreter.show_line(&c.to_string());
                     Ok(Literal::Void)

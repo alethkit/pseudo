@@ -1,9 +1,9 @@
 use super::literal::Literal;
 use super::operator::{BinaryOperator,  UnaryOperator};
 use super::types::{Type, Typed};
-use crate::environment::{EnvWrapper, Identifier};
-use crate::interpreter::Interpreter;
-use crate::error::runtime::RuntimeError;
+use super::super::environment::{EnvWrapper, Identifier};
+use super::super::Interpreter;
+use super::super::RuntimeError;
 use std::convert::TryFrom;
 use std::rc::Rc;
 

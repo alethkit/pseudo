@@ -5,9 +5,10 @@ use super::ast::{
     location::Location,
     operator::{BinaryOperator, UnaryOperator},
     statement::Statement,
-    token::Token,
-    types::{Type, TypeError, Typed},
+    Token,
+    types::{Type, Typed},
 };
+use super::error::{ParserError, TypeError};
 use std::collections::HashMap;
 use std::iter::Peekable;
 use std::mem::{discriminant, swap};

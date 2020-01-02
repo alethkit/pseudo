@@ -1,10 +1,10 @@
 use super::expression::Expression;
 use super::literal::Literal;
 use super::token::Token;
-use super::types::{Type, TypeError, Typed};
-use crate::environment::EnvWrapper;
-use crate::interpreter::Interpreter;
-use crate::error::runtime::RuntimeError;
+use super::types::{Type, Typed};
+use crate::internal::environment::EnvWrapper;
+use crate::internal::interpreter::Interpreter;
+use super::super::error::{RuntimeError, TypeError};
 
 use std::rc::Rc;
 

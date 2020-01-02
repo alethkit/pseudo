@@ -1,5 +1,5 @@
-use crate::ast::{literal::Literal, location::Location, token::Token};
-use crate::error::lex::LexError;
+use super::ast::{literal::Literal, location::Location, Token};
+use super::error::LexError;
 use peeking_take_while::PeekableExt;
 use std::iter::Peekable;
 use std::str::Chars;
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn token_tests() {
-        use crate::ast::literal;
+        use super::super::ast::literal;
         use Token::*;
         let token_strs = vec![
             "12",

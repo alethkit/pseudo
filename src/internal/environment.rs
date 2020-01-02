@@ -1,7 +1,7 @@
-use crate::ast::expression::ExprIdentifier;
-use crate::ast::literal::Literal;
-use crate::interpreter::Interpreter;
-use crate::error::runtime::RuntimeError;
+use super::ast::expression::ExprIdentifier;
+use super::ast::literal::Literal;
+use super::interpreter::Interpreter;
+use super::error::RuntimeError;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;

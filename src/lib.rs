@@ -1,9 +1,6 @@
-mod ast;
-mod environment;
-mod error;
-pub mod interpreter;
-pub mod io_provider;
-pub mod lexer;
-pub mod parser;
+mod internal;
+mod io_provider;
 
+pub use internal::{LocatableChars, Lexer, Parser, Interpreter, RuntimeError};
+pub use io_provider::IOProvider;
 
