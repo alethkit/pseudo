@@ -143,7 +143,7 @@ impl BinaryOperator {
                     (t1, t2),
                 )),
             },
-            BinaryOperator::Subtract | BinaryOperator::Multiply | BinaryOperator::Mod => {
+            BinaryOperator::Subtract | BinaryOperator::Multiply => {
                 match (expr1.get_type(), expr2.get_type()) {
                     (Integer, Integer) => Ok(Integer),
                     (Real, Real) => Ok(Real),
@@ -160,10 +160,10 @@ impl BinaryOperator {
                     (t1, t2),
                 )),
             },
-            BinaryOperator::IntDivide => match (expr1.get_type(), expr2.get_type()) {
-                (Integer, Integer) | (Real, Real) => Ok(Integer),
-                (t1, t2) => Err(TypeError::DoubleExpectedOneOf(
-                    vec![(Integer, Integer), (Real, Real)],
+            BinaryOperator::IntDivide | BinaryOperator::Mod => match (expr1.get_type(), expr2.get_type()) {
+                (Integer, Integer) => Ok(Integer),
+                (t1, t2) => Err(TypeError::DoubleExpected(
+                    (Integer, Integer), 
                     (t1, t2),
                 )),
             },
@@ -237,23 +237,20 @@ impl BinaryOperator {
             },
             BinaryOperator::Divide => match (val1, val2) {
                 (Literal::Integer(_a), Literal::Integer(0)) => Err(RuntimeError::DivisionByZero),
-                (Literal::Real(_a), Literal::Real(0.0)) => Err(RuntimeError::DivisionByZero),
+                // Guard used since floating point patterns will become a hard error
+                (Literal::Real(_a), Literal::Real(b)) if b == 0.0 => Err(RuntimeError::DivisionByZero),
                 (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Real((a / b) as f64)),
                 (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a / b)),
                 _ => unreachable!(),
             },
             BinaryOperator::IntDivide => match (val1, val2) {
                 (Literal::Integer(_a), Literal::Integer(0)) => Err(RuntimeError::DivisionByZero),
-                (Literal::Real(_a), Literal::Real(0.0)) => Err(RuntimeError::DivisionByZero),
                 (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a / b)),
-                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Integer((a / b) as i64)),
                 _ => unreachable!(),
             },
             BinaryOperator::Mod => match (val1, val2) {
                 (Literal::Integer(_a), Literal::Integer(0)) => Err(RuntimeError::DivisionByZero),
-                (Literal::Real(_a), Literal::Real(0.0)) => Err(RuntimeError::DivisionByZero),
                 (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a % b)),
-                (Literal::Real(a), Literal::Real(b)) => Ok(Literal::Real(a % b)),
                 _ => unreachable!(),
             },
             BinaryOperator::Index => match (val1, val2) {
