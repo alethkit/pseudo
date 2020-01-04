@@ -9,8 +9,12 @@ pub use interpreter::Interpreter;
 pub use lexer::{Lexer, LocatableChars};
 pub use parser::Parser;
 
-// io_provider requires access to only RuntimeError, so the rest of the module is kept private
-pub use error::RuntimeError;
+// For implemntations of IOProvider. Is in internal so that RuntimeError can access it.
+pub use error::IOError;
+
+// Used for integration tests
+pub use ast::Literal;
+pub use ast::Type;
 
 pub use error::PseudocodeError;
-
+pub use error::TypeError;

@@ -1,12 +1,9 @@
 use super::ast::{
     callable::{NativeFunction, GLOBALS},
     expression::{ExprIdentifier, Expression},
-    Literal,
-    Location,
     operator::{BinaryOperator, UnaryOperator},
-    Statement,
-    Token,
     types::{Type, Typed},
+    Literal, Location, Statement, Token,
 };
 use super::error::{ParserError, TypeError};
 use std::collections::HashMap;
@@ -15,6 +12,7 @@ use std::mem::{discriminant, swap};
 
 type TypeScope = HashMap<String, Type>;
 
+#[derive(Debug)]
 enum CallableTypeSpecifier {
     Subroutine(Vec<Type>, Type),
     NativeFunction(NativeFunction),
@@ -52,6 +50,7 @@ impl Typed for CallableTypeSpecifier {
     }
 }
 
+#[derive(Debug)]
 pub struct Parser<T>
 where
     T: Iterator<Item = (Token, Location)>,
@@ -66,7 +65,11 @@ where
     T: Iterator<Item = (Token, Location)>,
 {
     fn from(tokens: T) -> Self {
-        let function_scope = GLOBALS.iter().cloned().map(|(name, f)| (name.to_string(), CallableTypeSpecifier::NativeFunction(f))).collect();
+        let function_scope = GLOBALS
+            .iter()
+            .cloned()
+            .map(|(name, f)| (name.to_string(), CallableTypeSpecifier::NativeFunction(f)))
+            .collect();
         Parser {
             tokens: tokens.peekable(),
             type_scope: HashMap::new(),
@@ -74,7 +77,6 @@ where
         }
     }
 }
-
 
 type LocResult<T> = Result<(T, Location), (ParserError, Location)>;
 // The location field is duplicated so results can be handled using standard error operators.
@@ -168,8 +170,8 @@ where
     fn assignment(&mut self) -> LocResult<Expression> {
         //TODO: Get array assignment to work
         let (expr, loc) = self.logical_or()?;
-        match self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)? {
-            (Token::Equals, _) => {
+        match self.tokens.peek() {
+            Some((Token::Equals, _)) => {
                 let (_, loc2) = self.tokens.next().unwrap();
                 let (val, _) = self.assignment()?;
                 match expr {
@@ -298,8 +300,12 @@ where
     }
 
     fn primary(&mut self) -> LocResult<Expression> {
+        println!("hello!: {:#?}", self.tokens.peek());
         match self.tokens.next().ok_or(Parser::<T>::UnexpectedEOF)? {
-            (Token::Literal(lit), loc) => Ok((Expression::Literal(lit), loc)),
+            (Token::Literal(lit), loc) => {
+                println!("this worked!{:#?}", lit);
+                return Ok((Expression::Literal(lit), loc));
+            }
             (Token::LeftParenthesis, _) => {
                 let (expr, loc) = self.expression()?;
                 match self.tokens.peek() {
@@ -451,7 +457,7 @@ where
         if return_type != Type::Void && !body.iter().any(Parser::<T>::is_return_statement) {
             // Although some static checking is done, subroutines cannot be guaranteed to always
             // return a value.
-            // Example: A function with a while loop with a condition that is never met, and a 
+            // Example: A function with a while loop with a condition that is never met, and a
             // return statement inside the body.
             // Thus, dynamic checking is also implemented
             Err((ParserError::SubroutineRequiresReturn, loc))

@@ -1,10 +1,9 @@
 mod io_provider;
-use io_provider::GUIIOProvider;
 use super::utils::run_program;
+use io_provider::GUIIOProvider;
 
 use gtk::prelude::*;
-use std::path::Path;
-use std::fs::{File, read_to_string};
+use std::fs::{read_to_string, File};
 use std::io::Write;
 
 fn create_message_dialog(win: gtk::Window, msg: &str) {
@@ -100,7 +99,7 @@ pub fn build_ui(app: &gtk::Application) {
             &mut output_buf.get_start_iter(),
             &mut output_buf.get_end_iter(),
         );
-        let gui_io = GUIIOProvider::new(output_buf.clone(), window_clone.clone());
+        let gui_io = GUIIOProvider::new(output_buf, window_clone.clone());
         let contents = buf
             .get_text(&buf.get_start_iter(), &buf.get_end_iter(), false)
             .unwrap();

@@ -30,7 +30,7 @@ impl Iterator for LocatableChars<'_> {
                 self.line += 1;
                 self.column = 0;
                 self.chars.next();
-                Some((' ',cur_loc))
+                Some((' ', cur_loc))
             }
             _ => {
                 self.column += 1;
@@ -126,7 +126,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl Iterator for Lexer<'_> {
-    type Item = (TokenResult, Location);
+    type Item = Result<(Token, Location), (LexError, Location)>;
     fn next(&mut self) -> Option<Self::Item> {
         use LexError::*;
         use Token::*;
@@ -154,7 +154,10 @@ impl Iterator for Lexer<'_> {
                 Err(InvalidCharacter)
             }
         };
-        Some((val, l))
+        Some(match val {
+            Ok(t) => Ok((t, l)),
+            Err(e) => Err((e, l)),
+        })
     }
 }
 
@@ -166,18 +169,13 @@ mod tests {
 // Asserts that a string that contains a single token produces the expected token
     {
         let mut lex = Lexer::from(LocatableChars::from(s));
-        let (val, _) = lex.next().unwrap();
-        match val {
-            Ok(v) => {
-                assert_eq!(&v, t);
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        let (val, _) = lex.next().unwrap().map_err(|(e, l)| e)?;
+        assert_eq!(&val, t);
+        Ok(())
     }
 
     #[test]
-    fn token_tests() {
+    fn token_tests() -> Result<(), LexError> {
         use super::super::ast::Literal as Lit;
         use Token::*;
         let token_strs = vec![
@@ -297,21 +295,24 @@ mod tests {
         ];
         let pairs = token_strs.iter().zip(token_vals);
         for (s, val) in pairs {
-            assert_single_token(s, &val);
-            assert_single_token(&("\n\n".to_owned() + s), &val);
-            assert_single_token(&("  ".to_owned() + s + "\n\n"), &val);
-            assert_single_token(&("\n\n".to_owned() + s + "\n\n"), &val);
+            assert_single_token(s, &val)?;
+            assert_single_token(&("\n\n".to_owned() + s), &val)?;
+            assert_single_token(&("  ".to_owned() + s + "\n\n"), &val)?;
+            assert_single_token(&("\n\n".to_owned() + s + "\n\n"), &val)?;
         }
+        Ok(())
     }
 
     #[test]
-    fn plus() {
-        assert_single_token("+", &Token::Plus);
-        assert_single_token("\n\n\n+", &Token::Plus);
+    fn plus() -> Result<(), LexError> {
+        assert_single_token("+", &Token::Plus)?;
+        assert_single_token("\n\n\n+", &Token::Plus)?;
+        Ok(())
     }
 
     #[test]
-    fn minus() {
-        assert_single_token("-", &Token::Minus);
+    fn minus() -> Result<(), LexError> {
+        assert_single_token("-", &Token::Minus)?;
+        Ok(())
     }
 }

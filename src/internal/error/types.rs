@@ -1,7 +1,7 @@
 use super::super::ast::Type;
 
-#[derive(Debug)]
-pub enum TypeError{
+#[derive(Debug, PartialEq)]
+pub enum TypeError {
     // Typing erros are in the form:
     // First field: expected type.
     // Second field: actual type.
@@ -10,8 +10,7 @@ pub enum TypeError{
     DoubleExpected((Type, Type), (Type, Type)),
     DoubleExpectedOneOf(Vec<(Type, Type)>, (Type, Type)),
     UnequalTypes(Type, Type),
-    ArgumentMismatch(Vec<Type>,Vec<Type>), // When argument lists do not match
+    ArgumentMismatch(Vec<Type>, Vec<Type>), // When argument lists do not match
     ArgumentMistatchOneOf(Vec<Vec<Type>>, Vec<Type>),
-    InvalidReturnType(Type, Type)
+    InvalidReturnType(Type, Type),
 }
-

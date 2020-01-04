@@ -1,8 +1,8 @@
+use super::IOError;
 use core::num::{ParseFloatError, ParseIntError};
 use std::char::CharTryFromError;
-use std::io::Error as IoError;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RuntimeError {
     DivisionByZero,
     OutOfRange,
@@ -14,7 +14,7 @@ pub enum RuntimeError {
     InvalidInteger,
     InvalidReal,
     InvalidCharacter,
-    IOError,
+    IOError(IOError),
 }
 
 impl From<ParseIntError> for RuntimeError {
@@ -32,8 +32,9 @@ impl From<CharTryFromError> for RuntimeError {
         Self::InvalidCharacter
     }
 }
-impl From<IoError> for RuntimeError {
-    fn from(_: IoError) -> Self {
-        Self::IOError
+
+impl From<IOError> for RuntimeError {
+    fn from(e: IOError) -> Self {
+        Self::IOError(e)
     }
 }

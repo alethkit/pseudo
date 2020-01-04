@@ -1,20 +1,20 @@
+pub mod callable;
+pub mod expression;
+mod literal;
 mod location;
+pub mod operator;
 mod statement;
 mod token;
-mod literal;
-pub mod expression;
-pub mod operator;
 pub mod types;
-pub mod callable;
 
-use super::error as error;
+use super::error;
 
 // Structs, rather than modules, are exposed, to simplify import path
-pub use token::Token;
-pub use literal::Literal;
 pub use expression::Expression;
-pub use statement::Statement;
+pub use literal::Literal;
 pub use location::Location;
+pub use statement::Statement;
+pub use token::Token;
 
 // Although the module is public, it is reexported for easy access by TypeError
-pub use types::Type; 
+pub use types::Type;

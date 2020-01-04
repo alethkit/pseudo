@@ -1,7 +1,7 @@
 use super::ast::callable::{Callable, Subroutine, GLOBALS};
-use super::ast::{Literal, Expression, Statement};
+use super::ast::{Expression, Literal, Statement};
 use super::environment::{EnvWrapper, Environment};
-use super::error::RuntimeError;
+use super::error::{IOError, RuntimeError};
 use crate::io_provider::IOProvider;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -11,24 +11,28 @@ pub type FunctionScope = HashMap<String, Callable>;
 pub struct Interpreter {
     env: EnvWrapper,
     functions: FunctionScope,
-    io_provider: Box<dyn IOProvider>
+    io_provider: Box<dyn IOProvider>,
 }
 
 impl Interpreter {
     pub fn new(io_provider: Box<dyn IOProvider>) -> Self {
-        let functions = GLOBALS.iter().cloned().map(|(name, f)| (name.to_string(), Callable::Native(f))).collect();
+        let functions = GLOBALS
+            .iter()
+            .cloned()
+            .map(|(name, f)| (name.to_string(), Callable::Native(f)))
+            .collect();
         Interpreter {
             functions,
             env: Rc::new(RefCell::new(Environment::new())),
-            io_provider
+            io_provider,
         }
     }
 
-    pub fn show_line(&self, line_to_show: &str) {
+    pub fn show_line(&mut self, line_to_show: &str) {
         self.io_provider.show_line(line_to_show)
     }
 
-    pub fn get_line(&self) -> Result<String, RuntimeError> {
+    pub fn get_line(&mut self) -> Result<String, IOError> {
         self.io_provider.get_line()
     }
 
@@ -94,7 +98,7 @@ impl Interpreter {
                 while let true = bool::from(condition.evaluate(Rc::clone(&env), self)?) {
                     match self.execute_block(&body, Rc::clone(&env))? {
                         Some(val) => return Ok(Some(val)),
-                        None => continue
+                        None => continue,
                     }
                 }
                 Ok(None)
@@ -104,7 +108,7 @@ impl Interpreter {
                 while let true = bool::from(condition.evaluate(Rc::clone(&env), self)?) {
                     match self.execute_block(&body, Rc::clone(&env))? {
                         Some(val) => return Ok(Some(val)),
-                        None => continue
+                        None => continue,
                     }
                 }
                 Ok(None)
@@ -139,7 +143,7 @@ impl Interpreter {
                         .define(loop_var.to_string(), Literal::Integer(loop_val));
                     match self.execute_block(&body, Rc::clone(&loop_var_env))? {
                         Some(val) => return Ok(Some(val)),
-                        None => continue
+                        None => continue,
                     }
                 }
                 Ok(None)
@@ -157,7 +161,7 @@ impl Interpreter {
                         name.clone(),
                         parameters.iter().map(|(name, _)| name).cloned().collect(),
                         body.clone(),
-                        return_type.clone()
+                        return_type.clone(),
                     )),
                 );
                 Ok(None)

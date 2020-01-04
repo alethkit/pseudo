@@ -76,7 +76,7 @@ impl From<char> for Token {
             ';' => Token::SemiColon,
             '(' => Token::LeftParenthesis,
             ')' => Token::RightParenthesis,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

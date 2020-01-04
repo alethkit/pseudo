@@ -1,9 +1,9 @@
 use super::literal::Literal;
-use super::operator::{BinaryOperator,  UnaryOperator};
+use super::operator::{BinaryOperator, UnaryOperator};
 use super::types::{Type, Typed};
-use super::super::environment::{EnvWrapper, Identifier};
-use super::super::Interpreter;
-use super::super::RuntimeError;
+use crate::internal::environment::{EnvWrapper, Identifier};
+use crate::internal::error::RuntimeError;
+use crate::internal::Interpreter;
 use std::convert::TryFrom;
 use std::rc::Rc;
 
@@ -54,7 +54,11 @@ impl Typed for Expression {
 }
 
 impl Expression {
-    pub fn evaluate(&self, env: EnvWrapper, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
+    pub fn evaluate(
+        &self,
+        env: EnvWrapper,
+        interpreter: &mut Interpreter,
+    ) -> Result<Literal, RuntimeError> {
         match self {
             Expression::Literal(lit) => Ok(lit.clone()),
             Expression::Binary { left, op, right } => op.evaluate(left, right, env, interpreter),
@@ -81,8 +85,10 @@ impl Expression {
                 let evaluated_args: Vec<Literal> = args
                     .iter()
                     .map(|expr| expr.evaluate(Rc::clone(&env), interpreter))
-                    .collect::<Result<_,_>>()?;
-               interpreter.get_callable(callee).call(evaluated_args, interpreter)
+                    .collect::<Result<_, _>>()?;
+                interpreter
+                    .get_callable(callee)
+                    .call(evaluated_args, interpreter)
             }
         }
     }

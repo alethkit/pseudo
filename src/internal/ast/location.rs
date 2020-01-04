@@ -17,7 +17,3 @@ impl fmt::Display for Location {
         write!(f, "Line {}, Column {}", self.line, self.column)
     }
 }
-
-
-
-

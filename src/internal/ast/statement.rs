@@ -9,28 +9,29 @@ pub enum Statement {
     If {
         condition: Expression,
         body: Vec<Statement>,
-        alternative: Option<Vec<Statement>>
+        alternative: Option<Vec<Statement>>,
     },
     While {
         condition: Expression,
-        body: Vec<Statement>
+        body: Vec<Statement>,
     },
     DoWhile {
         condition: Expression,
-        body: Vec<Statement>
+        body: Vec<Statement>,
     },
-    For { //For loop is INCLUSIVE
+    For {
+        //For loop is INCLUSIVE
         loop_var: String,
         initial_val: Expression,
         end_val: Expression,
         step_val: Expression, // default value is 1
-        body: Vec<Statement>
+        body: Vec<Statement>,
     },
     SubroutineDeclaration {
         name: String,
         parameters: Vec<(String, Type)>,
         return_type: Type,
-        body: Vec<Statement>
+        body: Vec<Statement>,
     },
-    Return(Expression)
+    Return(Expression),
 }

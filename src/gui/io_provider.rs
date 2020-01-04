@@ -1,7 +1,7 @@
 use glib::markup_escape_text;
 use gtk::prelude::{ContainerExt, DialogExt, EntryExt, TextBufferExt, WidgetExt};
 use gtk::{TextBuffer, Window};
-use pseudocode::{IOProvider, RuntimeError};
+use pseudocode::{IOError, IOProvider};
 
 #[derive(Clone)]
 pub struct GUIIOProvider {
@@ -16,7 +16,7 @@ impl GUIIOProvider {
 }
 
 impl IOProvider for GUIIOProvider {
-    fn get_line(&self) -> Result<String, RuntimeError> {
+    fn get_line(&mut self) -> Result<String, IOError> {
         let dialog = gtk::Dialog::new_with_buttons(
             Some("Input requested"),
             Some(&self.window),
@@ -28,19 +28,21 @@ impl IOProvider for GUIIOProvider {
         area.add(&user_entry);
         dialog.show_all();
         dialog.run();
-        let contents = user_entry.get_text().unwrap();
+        let contents = user_entry
+            .get_text()
+            .ok_or(IOError("Error getting user input from GUI"))?;
         dialog.destroy();
 
         Ok(contents.to_string())
     }
-    fn show_line(&self, line_to_be_shown: &str) {
+    fn show_line(&mut self, line_to_be_shown: &str) {
         self.output_buf
             .insert(&mut self.output_buf.get_end_iter(), line_to_be_shown);
         self.output_buf
             .insert(&mut self.output_buf.get_end_iter(), "\n");
     }
 
-    fn show_err(&self, err_to_be_shown: &str) {
+    fn show_err(&mut self, err_to_be_shown: &str) {
         let erred_string = "<span foreground=\"red\">".to_owned()
             + markup_escape_text(err_to_be_shown).as_str()
             + "\n</span>";

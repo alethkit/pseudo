@@ -1,12 +1,12 @@
 use pseudocode::{IOProvider, Interpreter, Lexer, LocatableChars, Parser};
 
-pub fn run_program(contents: &str, provider: impl IOProvider + Clone + 'static) {
+pub fn run_program(contents: &str, mut provider: impl IOProvider + Clone + 'static) {
     //Runs the program given and interacts with the user via IOProvider.
     let chars = LocatableChars::from(contents);
     let lex = Lexer::from(chars);
-    let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(|(r, _l)| r.is_ok());
+    let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(Result::is_ok);
     if errors.is_empty() {
-        let pars = Parser::from(tokens.into_iter().map(|(r, l)| (r.unwrap(), l)));
+        let pars = Parser::from(tokens.into_iter().map(Result::unwrap));
         let program: Result<Vec<_>, _> = pars.collect();
         match program {
             Ok(stmts) => {

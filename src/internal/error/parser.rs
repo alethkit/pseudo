@@ -1,7 +1,7 @@
-use super::TypeError;
 use super::super::ast::Token;
+use super::TypeError;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParserError {
     Typing(TypeError),
     ExpectedExpression,

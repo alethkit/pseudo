@@ -1,9 +1,7 @@
 mod gui;
 mod utils;
+use gio::prelude::{ApplicationExt, ApplicationExtManual};
 use std::env::args;
-use gio::prelude::{ApplicationExt,ApplicationExtManual};
-
-
 
 fn main() {
     let application = gtk::Application::new(None, Default::default()).unwrap();

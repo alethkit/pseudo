@@ -1,17 +1,17 @@
+use super::super::error::{RuntimeError, TypeError};
 use super::expression::Expression;
 use super::literal::Literal;
 use super::token::Token;
 use super::types::{Type, Typed};
 use crate::internal::environment::EnvWrapper;
 use crate::internal::interpreter::Interpreter;
-use super::super::error::{RuntimeError, TypeError};
 
 use std::rc::Rc;
 
 #[derive(Debug, Copy, Clone)]
 pub enum UnaryOperator {
     Not,
-   Minus,
+    Minus,
 }
 
 impl From<Token> for UnaryOperator {
@@ -39,7 +39,12 @@ impl UnaryOperator {
             },
         }
     }
-   pub fn evaluate(&self, expr: &Expression, env: EnvWrapper, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
+    pub fn evaluate(
+        &self,
+        expr: &Expression,
+        env: EnvWrapper,
+        interpreter: &mut Interpreter,
+    ) -> Result<Literal, RuntimeError> {
         match self {
             UnaryOperator::Not => match expr.evaluate(env, interpreter)? {
                 Literal::Boolean(b) => Ok(Literal::Boolean(!b)),
@@ -70,7 +75,7 @@ pub enum BinaryOperator {
     Divide,
     IntDivide,
     Mod,
-    Index
+    Index,
 }
 
 impl From<Token> for BinaryOperator {
@@ -91,7 +96,7 @@ impl From<Token> for BinaryOperator {
             Token::Div => Self::IntDivide,
             Token::Mod => Self::Mod,
             Token::LeftBracket => Self::Index,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -164,13 +169,25 @@ impl BinaryOperator {
             },
             BinaryOperator::Index => match (expr1.get_type(), expr2.get_type()) {
                 (List(t), Integer) => Ok(*t),
-                (t1, t2) => Err(TypeError::DoubleExpected((List(Box::new(Any)), Integer),(t1,t2)))
-            }
+                (t1, t2) => Err(TypeError::DoubleExpected(
+                    (List(Box::new(Any)), Integer),
+                    (t1, t2),
+                )),
+            },
         }
     }
 
-    pub fn evaluate(&self, expr1: &Expression, expr2: &Expression, env: EnvWrapper, interpreter: &mut Interpreter) -> Result<Literal, RuntimeError> {
-        let (val1, val2) = (expr1.evaluate(Rc::clone(&env), interpreter)?, expr2.evaluate(Rc::clone(&env), interpreter)?);
+    pub fn evaluate(
+        &self,
+        expr1: &Expression,
+        expr2: &Expression,
+        env: EnvWrapper,
+        interpreter: &mut Interpreter,
+    ) -> Result<Literal, RuntimeError> {
+        let (val1, val2) = (
+            expr1.evaluate(Rc::clone(&env), interpreter)?,
+            expr2.evaluate(Rc::clone(&env), interpreter)?,
+        );
         match self {
             BinaryOperator::Equality => Ok(Literal::Boolean(val1 == val2)),
             BinaryOperator::Inequality => Ok(Literal::Boolean(val1 != val2)),
@@ -242,10 +259,10 @@ impl BinaryOperator {
             BinaryOperator::Index => match (val1, val2) {
                 (Literal::List(a), Literal::Integer(b)) => match a.get(b as usize) {
                     Some(v) => Ok(v.clone()),
-                    None => Err(RuntimeError::OutOfRange)
-                }
-                _ => unreachable!()
-            }
+                    None => Err(RuntimeError::OutOfRange),
+                },
+                _ => unreachable!(),
+            },
         }
     }
 }

@@ -1,7 +1,7 @@
 use super::ast::expression::ExprIdentifier;
 use super::ast::Literal;
-use super::interpreter::Interpreter;
 use super::error::RuntimeError;
+use super::interpreter::Interpreter;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -27,16 +27,20 @@ impl From<String> for Identifier {
 impl TryFrom<(&ExprIdentifier, EnvWrapper, &mut Interpreter)> for Identifier {
     type Error = RuntimeError;
 
-    fn try_from((value, env,interpreter): (&ExprIdentifier, EnvWrapper, &mut Interpreter)) -> Result<Self, Self::Error> {
+    fn try_from(
+        (value, env, interpreter): (&ExprIdentifier, EnvWrapper, &mut Interpreter),
+    ) -> Result<Self, Self::Error> {
         match value {
             ExprIdentifier::Variable(name) => Ok(Self::Variable(name.to_string())),
-            ExprIdentifier::Index(ident, index) => match index.evaluate(Rc::clone(&env), interpreter)? {
-                Literal::Integer(int) => Ok(Self::Index(
-                    Self::try_from((&**ident, env, interpreter)).map(Box::new)?,
-                    int as usize,
-                )),
-                _ => unreachable!("Already type checked"),
-            },
+            ExprIdentifier::Index(ident, index) => {
+                match index.evaluate(Rc::clone(&env), interpreter)? {
+                    Literal::Integer(int) => Ok(Self::Index(
+                        Self::try_from((&**ident, env, interpreter)).map(Box::new)?,
+                        int as usize,
+                    )),
+                    _ => unreachable!("Already type checked"),
+                }
+            }
         }
     }
 }
@@ -78,7 +82,10 @@ impl Environment {
                     .get(ident),
             },
             Identifier::Index(id, index) => match self.get(id)? {
-                Literal::List(v) => v.get(*index).ok_or(RuntimeError::OutOfRange).map(Clone::clone),
+                Literal::List(v) => v
+                    .get(*index)
+                    .ok_or(RuntimeError::OutOfRange)
+                    .map(Clone::clone),
                 _ => unreachable!("Index should have been type checked on list"),
             },
         }
