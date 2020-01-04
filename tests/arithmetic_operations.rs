@@ -164,3 +164,27 @@ fn real_div_error() {
         ))
     )
 }
+
+#[test]
+fn integer_mod_normal() {
+    assert_eq!(evaluate_expression("5 MOD 3").unwrap(), Literal::Integer(2));
+}
+
+#[test]
+fn integer_zero_mod_error() {
+    assert_eq!(
+        evaluate_expression("5 MOD 0").unwrap_err(),
+        PseudocodeError::Runtime(RuntimeError::DivisionByZero)
+    )
+}
+
+#[test]
+fn real_mod_error() {
+    assert_eq!(
+        evaluate_expression("5.0 MOD 3.0").unwrap_err(),
+        PseudocodeError::Type(TypeError::DoubleExpected(
+            (Type::Integer, Type::Integer),
+            (Type::Real, Type::Real),
+        ))
+    )
+}
