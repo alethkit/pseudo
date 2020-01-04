@@ -300,12 +300,8 @@ where
     }
 
     fn primary(&mut self) -> LocResult<Expression> {
-        println!("hello!: {:#?}", self.tokens.peek());
         match self.tokens.next().ok_or(Parser::<T>::UnexpectedEOF)? {
-            (Token::Literal(lit), loc) => {
-                println!("this worked!{:#?}", lit);
-                return Ok((Expression::Literal(lit), loc));
-            }
+            (Token::Literal(lit), loc) => Ok((Expression::Literal(lit), loc)),
             (Token::LeftParenthesis, _) => {
                 let (expr, loc) = self.expression()?;
                 match self.tokens.peek() {

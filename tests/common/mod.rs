@@ -47,12 +47,9 @@ impl IOProvider for TestIOProvider {
 pub fn evaluate_expression(expression_string: &str) -> Result<Literal, PseudocodeError> {
     let lexer = Lexer::from(LocatableChars::from(expression_string));
     let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, l)| e)?;
-    println!("{:#?}", tokens);
     let mut parser = Parser::from(tokens.into_iter());
     let expression_result = parser.expression();
-    println!("{:#?}", expression_result);
     let expression = expression_result.map(|r| r.0).map_err(|r| r.0)?;
-    println!("h");
     let mut inter = Interpreter::new(Box::new(TestIOProvider::new()));
     inter
         .evaluate_expression(&expression)
