@@ -168,7 +168,6 @@ where
     }
 
     fn assignment(&mut self) -> LocResult<Expression> {
-        //TODO: Get array assignment to work
         let (expr, loc) = self.logical_or()?;
         match self.tokens.peek() {
             Some((Token::Equals, _)) => {
@@ -379,7 +378,7 @@ where
     fn var_declaration(&mut self) -> LocResult<Statement> {
         self.consume(Token::Colon)?;
         let (var_type, _) = self.type_hint()?;
-        let (var_name, loc) = match self.consume(Token::VarIdentifier("".to_string()))? {
+        let (var_name, loc) = match self.consume(Token::VarIdentifier(String::new()))? {
             (Token::VarIdentifier(var_name), loc) => (var_name, loc),
             _ => unreachable!("consume should have checked type"),
         };

@@ -13,7 +13,7 @@ pub use parser::Parser;
 pub use error::IOError;
 
 // Used for integration tests
-pub use ast::{Literal, Type};
+pub use ast::{Literal, Type, Token};
 pub use environment::{EnvWrapper, Environment, Identifier};
 
-pub use error::{PseudocodeError, RuntimeError, TypeError};
+pub use error::{PseudocodeError, RuntimeError, TypeError, ParserError};

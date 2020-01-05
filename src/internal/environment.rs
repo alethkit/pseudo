@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct Environment {
     values: HashMap<String, Literal>,
     parent: Option<EnvWrapper>,
