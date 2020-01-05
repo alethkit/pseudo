@@ -28,6 +28,20 @@ impl Interpreter {
         }
     }
 
+    pub fn from_environment(env: EnvWrapper, io_provider: Box<dyn IOProvider>) -> Self {
+        let functions = GLOBALS
+            .iter()
+            .cloned()
+            .map(|(name, f)| (name.to_string(), Callable::Native(f)))
+            .collect();
+        Interpreter {
+            functions,
+            env,
+            io_provider,
+        }
+    
+    }
+
     pub fn show_line(&mut self, line_to_show: &str) {
         self.io_provider.show_line(line_to_show)
     }

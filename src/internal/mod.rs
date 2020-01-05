@@ -14,5 +14,6 @@ pub use error::IOError;
 
 // Used for integration tests
 pub use ast::{Literal, Type};
+pub use environment::{EnvWrapper, Environment, Identifier};
 
 pub use error::{PseudocodeError, RuntimeError, TypeError};

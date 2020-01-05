@@ -1,6 +1,8 @@
 use pseudocode::{
-    IOError, IOProvider, Interpreter, Lexer, Literal, LocatableChars, Parser, PseudocodeError,
+    IOError, IOProvider, Interpreter, Lexer, Literal, LocatableChars, Parser, PseudocodeError, EnvWrapper, Identifier
 };
+
+use std::rc::Rc;
 
 struct TestIOProvider {
     input_stream: Vec<String>,
@@ -54,4 +56,24 @@ pub fn evaluate_expression(expression_string: &str) -> Result<Literal, Pseudocod
     inter
         .evaluate_expression(&expression)
         .map_err(PseudocodeError::from)
+}
+
+pub fn execute_with_environment(contents: &str, env: EnvWrapper) -> Result<EnvWrapper, PseudocodeError> {
+    let lexer = Lexer::from(LocatableChars::from(contents));
+    let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, _)| e)?;
+    let parser = Parser::from(tokens.into_iter());
+    let program_result : Result<Vec<_>,_> = parser.collect();
+    match program_result {
+        Ok(program) => {
+            let mut inter = Interpreter::from_environment(Rc::clone(&env), Box::new(TestIOProvider::new()));
+            inter.execute(&program.into_iter().map(|stmt| stmt.0).collect())?;
+            Ok(env)
+        },
+        Err(e) => Err(PseudocodeError::from(e.0))
+    }
+
+}
+
+pub fn get_value_from_env(env: EnvWrapper, name: &str) -> Literal {
+    env.borrow().get(&Identifier::from(name.to_owned())).unwrap()
 }
