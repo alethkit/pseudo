@@ -6,7 +6,7 @@ pub enum LexError {
     UnterminatedString,
     UnterminatedChar,
     UnterminatedReal,
-    InvalidCharacter,
+    InvalidCharacter(char),
 }
 
 impl fmt::Display for LexError {

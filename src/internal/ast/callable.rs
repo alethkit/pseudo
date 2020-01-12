@@ -53,6 +53,18 @@ impl Subroutine {
         }
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn ret_type(&self) -> &Type {
+        &self.return_type
+    }
+
+    pub fn params(&self) -> Vec<String> {
+        self.parameters.to_vec()
+    }
+
     fn call(
         &self,
         args: Vec<Literal>,

@@ -15,6 +15,7 @@ pub use literal::Literal;
 pub use location::Location;
 pub use statement::Statement;
 pub use token::Token;
+pub use callable::Callable;
 
 // Although the module is public, it is reexported for easy access by TypeError
 pub use types::Type;

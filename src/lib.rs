@@ -5,7 +5,7 @@ mod io_provider;
 pub use internal::{Interpreter, Lexer, LocatableChars, Parser};
 
 // For integration tests
-pub use internal::{Literal, Type, Token};
+pub use internal::{Literal, Type, Token, Callable, Subroutine};
 pub use internal::{PseudocodeError, RuntimeError, TypeError, ParserError};
 pub use internal::{EnvWrapper, Environment, Identifier};
 

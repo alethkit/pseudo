@@ -139,7 +139,7 @@ impl Iterator for Lexer<'_> {
             '<' => self.two_char('=', Ok(LessEqual), Ok(LessThan)),
             '>' => self.two_char('=', Ok(GreaterEqual), Ok(GreaterThan)),
             '-' => self.two_char('>', Ok(Arrow), Ok(Minus)),
-            '!' => self.two_char('=', Ok(NotEqual), Err(InvalidCharacter)),
+            '!' => self.two_char('=', Ok(NotEqual), Err(InvalidCharacter(c))),
             '=' => self.two_char('=', Ok(DoubleEqual), Ok(Equals)),
             '0'..='9' => self.number(),
             '"' => self.str_literal(),
@@ -151,7 +151,7 @@ impl Iterator for Lexer<'_> {
             }
             _ => {
                 self.chars.next();
-                Err(InvalidCharacter)
+                Err(InvalidCharacter(c))
             }
         };
         Some(match val {

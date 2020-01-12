@@ -41,6 +41,10 @@ impl Interpreter {
         }
     
     }
+    
+    pub fn get_prov(&mut self) -> &mut Box<dyn IOProvider> {
+        &mut self.io_provider
+    }
 
     pub fn show_line(&mut self, line_to_show: &str) {
         self.io_provider.show_line(line_to_show)
@@ -137,7 +141,7 @@ impl Interpreter {
                 let start_val = i64::from(initial_val.evaluate(Rc::clone(&env), self)?);
                 let end_val = i64::from(end_val.evaluate(Rc::clone(&env), self)?);
                 let step_val = i64::from(step_val.evaluate(Rc::clone(&env), self)?);
-                if start_val >= end_val && step_val > 0 || start_val <= end_val && step_val < 0 {
+                if start_val > end_val && step_val > 0 || start_val < end_val && step_val < 0 {
                     return Err(RuntimeError::InvalidRangeBound);
                 }
                 let loop_var_env = Rc::new(RefCell::new(Environment::from_enclosing(env)));
