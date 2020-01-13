@@ -6,7 +6,6 @@ use std::rc::Rc;
 
 #[test]
 fn integer_variable_declaration_normal() {
-    let env_wrap = Environment::new_wrapper();
     let new_env_wrap = execute("VAR: Int test_i = 1;").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_i"),
@@ -16,7 +15,6 @@ fn integer_variable_declaration_normal() {
 
 #[test]
 fn real_variable_declaration_normal() {
-    let env_wrap = Environment::new_wrapper();
     let new_env_wrap = execute("VAR: Real test_r = 1.5;").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_r"),
@@ -26,7 +24,6 @@ fn real_variable_declaration_normal() {
 
 #[test]
 fn boolean_variable_declaration_normal() {
-    let env_wrap = Environment::new_wrapper();
     let new_env_wrap = execute("VAR: Bool test_b = True;").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_b"),
@@ -36,7 +33,6 @@ fn boolean_variable_declaration_normal() {
 
 #[test]
 fn char_variable_declaration_normal() {
-    let env_wrap = Environment::new_wrapper();
     let new_env_wrap = execute("VAR: Char test_c = 'c';").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_c"),
@@ -46,7 +42,6 @@ fn char_variable_declaration_normal() {
 
 #[test]
 fn string_variable_declaration_normal() {
-    let env_wrap = Environment::new_wrapper();
     let new_env_wrap = execute("VAR: String test_s = \"foo\";").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_s"),
@@ -56,7 +51,6 @@ fn string_variable_declaration_normal() {
 
 #[test]
 fn constant_declaration_normal() {
-    let env_wrap = Environment::new_wrapper();
     let new_env_wrap = execute("CONSTANT: Int ANSWER = 42;").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "ANSWER"),
@@ -66,7 +60,6 @@ fn constant_declaration_normal() {
 
 #[test]
 fn type_mismatch_variable_declaration_error() {
-    let env_wrap = Environment::new_wrapper();
     let err = execute("VAR: Int not_int = \"bob\";").unwrap_err();
     assert_eq!(
         err,
@@ -76,7 +69,6 @@ fn type_mismatch_variable_declaration_error() {
 
 #[test]
 fn constant_identifier_variable_declaration_error() {
-    let env_wrap = Environment::new_wrapper();
     let err = execute("VAR: String NOT_VAR = \"bob\";").unwrap_err();
     assert_eq!(
         err,
@@ -86,7 +78,6 @@ fn constant_identifier_variable_declaration_error() {
 
 #[test]
 fn variable_identifier_constant_declaration_error() {
-    let env_wrap = Environment::new_wrapper();
     let err =
         execute("CONSTANT: String not_con = \"bob\";").unwrap_err();
     assert_eq!(
@@ -97,7 +88,6 @@ fn variable_identifier_constant_declaration_error() {
 
 #[test]
 fn integer_variable_assignment_normal() {
-    let env_wrap = Environment::new_wrapper();
     let new_env_wrap =
         execute("VAR: Int test_i = 1; test_i = 2;").unwrap();
     assert_eq!(
@@ -108,7 +98,6 @@ fn integer_variable_assignment_normal() {
 
 #[test]
 fn type_mismatch_variable_assignment_error() {
-    let env_wrap = Environment::new_wrapper();
     let err = execute("VAR: Real test_r = 1.5; test_r = \"bar\";")
         .unwrap_err();
     assert_eq!(
@@ -119,7 +108,6 @@ fn type_mismatch_variable_assignment_error() {
 
 #[test]
 fn constant_assignment_error() {
-    let env_wrap = Environment::new_wrapper();
     let err =
         execute("CONSTANT: Int ANSWER = 42; ANSWER = 43;").unwrap_err();
     assert_eq!(
