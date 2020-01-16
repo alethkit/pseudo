@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter, Result};
+
 mod io;
 mod lex;
 mod parser;
@@ -17,6 +19,18 @@ pub enum PseudocodeError {
     Type(TypeError),
     Parsing(ParserError),
     Runtime(RuntimeError),
+}
+
+
+impl Display for PseudocodeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            Self::Lexing(e) => e.fmt(f),
+            Self::Type(e) => e.fmt(f),
+            Self::Parsing(e) => e.fmt(f),
+            Self::Runtime(e) => e.fmt(f)
+        }
+    }
 }
 
 impl From<LexError> for PseudocodeError {

@@ -1,5 +1,6 @@
 use super::IOError;
 use core::num::{ParseFloatError, ParseIntError};
+use std::fmt::{Display, Formatter, Result};
 use std::char::CharTryFromError;
 
 #[derive(Debug, PartialEq)]
@@ -15,6 +16,24 @@ pub enum RuntimeError {
     InvalidReal,
     InvalidCharacter,
     IOError(IOError),
+}
+
+impl Display for RuntimeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            Self::DivisionByZero => write!(f, "Division by zero is not allowed"),
+            Self::OutOfRange => write!(f, "The value specified is outside the valid range"),
+            Self::UndefinedVariable => write!(f, "An undefined variable has been referenced. Please define the variable."),
+            Self::MustBeCalled => write!(f, "A function cannot be referenced directly. Call the function by using a pair of brackets e.g my_function()"),
+            Self::RangeStepCannotBeZero => write!(f, "The step value in a for loop cannot be zero"),
+            Self::InvalidRangeBound => write!(f, "The bounds given cannot result in a valid non-empty range"),
+            Self::IncorrectReturnExpression => write!(f, "The value returned is not the same type as the declared return type"),
+            Self::InvalidInteger => write!(f, "The given string cannot be parsed into an integer"),
+            Self::InvalidReal => write!(f, "The given string cannot be parsed into a real"),
+            Self::InvalidCharacter => write!(f, "The given integer cannot be converted into a valid character"),
+            Self::IOError(e) => write!(f, "An error occured in user I/O: {}", e)
+        }
+    }
 }
 
 impl From<ParseIntError> for RuntimeError {

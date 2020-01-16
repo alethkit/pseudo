@@ -1,4 +1,4 @@
-use super::ast::{Literal, Location, Token};
+use super::ast::{Literal, Locatable, Location, Token};
 use super::error::LexError;
 use peeking_take_while::PeekableExt;
 use std::iter::Peekable;
@@ -126,7 +126,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl Iterator for Lexer<'_> {
-    type Item = Result<(Token, Location), (LexError, Location)>;
+    type Item = Result<Locatable<Token>, Locatable<LexError>>;
     fn next(&mut self) -> Option<Self::Item> {
         use LexError::*;
         use Token::*;
@@ -155,8 +155,8 @@ impl Iterator for Lexer<'_> {
             }
         };
         Some(match val {
-            Ok(t) => Ok((t, l)),
-            Err(e) => Err((e, l)),
+            Ok(t) => Ok(Locatable::new(t, l)),
+            Err(e) => Err(Locatable::new(e, l)),
         })
     }
 }
@@ -169,7 +169,7 @@ mod tests {
 // Asserts that a string that contains a single token produces the expected token
     {
         let mut lex = Lexer::from(LocatableChars::from(s));
-        let (val, _) = lex.next().unwrap().map_err(|(e, l)| e)?;
+        let val = lex.next().unwrap().map_err(Locatable::deloc).map(Locatable::deloc)?;
         assert_eq!(&val, t);
         Ok(())
     }

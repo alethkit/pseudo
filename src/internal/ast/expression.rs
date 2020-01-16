@@ -5,6 +5,8 @@ use crate::internal::environment::{EnvWrapper, Identifier};
 use crate::internal::error::RuntimeError;
 use crate::internal::Interpreter;
 use std::convert::TryFrom;
+use std::fmt::{Display, Formatter};
+use std::fmt;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -36,6 +38,7 @@ pub enum Expression {
     Subroutine(String, Type),     // User Defined
     NativeFunction(String, Type), // Built-in
 }
+
 
 impl Typed for Expression {
     fn get_type(&self) -> Type {

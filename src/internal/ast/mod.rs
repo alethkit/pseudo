@@ -12,7 +12,7 @@ use super::error;
 // Structs, rather than modules, are exposed, to simplify import path
 pub use expression::Expression;
 pub use literal::Literal;
-pub use location::Location;
+pub use location::{Location, Locatable};
 pub use statement::Statement;
 pub use token::Token;
 pub use callable::Callable;

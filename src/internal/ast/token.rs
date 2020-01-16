@@ -1,4 +1,5 @@
 use super::literal::Literal;
+use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -57,6 +58,61 @@ pub enum Token {
     LeftParenthesis,
     RightParenthesis,
     Arrow, // ->
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            Self::Literal(lit) => lit.fmt(f),
+            Self::VarIdentifier(s) | Self::ConstIdentifier(s) => s.fmt(f),
+            Self::Int => write!(f, "Int keyword"),
+            Self::Real => write!(f, "Real keyword"),
+            Self::Bool => write!(f, "Bool keyword"),
+            Self::Char => write!(f, "Char keyword"),
+            Self::String => write!(f, "String keyword"),
+            Self::Or => write!(f, "Or operator"),
+            Self::And => write!(f, "And operator"),
+            Self::DoubleEqual => write!(f, "Equality operator"),
+            Self::NotEqual => write!(f, "Inequality operator"),
+            Self::LessThan => write!(f, "Less than operator"),
+            Self::LessEqual => write!(f, "Less or equal operator"),
+            Self::GreaterThan => write!(f, "Greater than operator"),
+            Self::GreaterEqual => write!(f, "Greater or equal operator"),
+            Self::Plus => write!(f, "Plus"),
+            Self::Minus => write!(f, "Minus"),
+            Self::Star => write!(f, "Multiplication"),
+            Self::Slash => write!(f, "Division"),
+            Self::Div => write!(f, "Div"),
+            Self::Mod => write!(f, "Mod"),
+            Self::Not => write!(f, "Not"),
+            Self::Constant => write!(f, "Constant"),
+            Self::Var => write!(f, "Var"),
+            Self::Subroutine => write!(f, "Subroutine"),
+            Self::EndSubroutine => write!(f, "Endsubroutine"),
+            Self::While => write!(f, "While"),
+            Self::Do => write!(f, "Do"),
+            Self::EndWhile => write!(f, "Endwhile"),
+            Self::EndDoWhile => write!(f, "Enddowhile"),
+            Self::For => write!(f, "For"),
+            Self::To => write!(f, "To"),
+            Self::Step => write!(f, "Step"),
+            Self::EndFor => write!(f, "Endfor"),
+            Self::If => write!(f, "If"),
+            Self::Then => write!(f, "Then"),
+            Self::Else => write!(f, "Else"),
+            Self::EndIf => write!(f, "Endif"),
+            Self::Return => write!(f, "Return"),
+            Self::Colon => write!(f, ":"),
+            Self::Comma => write!(f, ","),
+            Self::LeftBracket => write!(f, "["),
+            Self::RightBracket => write!(f, "]"),
+            Self::Equals => write!(f, "="),
+            Self::SemiColon => write!(f, ";"),
+            Self::LeftParenthesis => write!(f, "("),
+            Self::RightParenthesis => write!(f, ")"),
+            Self::Arrow => write!(f, "Arrow operator (->)"),
+        }
+    }
 }
 
 impl From<char> for Token {

@@ -1,4 +1,6 @@
 use super::types::{Type, Typed};
+use std::fmt::{Display, Formatter, Result};
+use std::string::ToString;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
@@ -9,6 +11,22 @@ pub enum Literal {
     Boolean(bool), // True and False (Stored as the boolean value)
     List(Vec<Literal>),
     Void, // Might be needed.
+}
+
+
+impl Display for Literal {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            Self::Integer(l) => l.fmt(f),
+            Self::Real(l) => l.fmt(f),
+            Self::Str(l) => l.fmt(f),
+            Self::Character(l) => l.fmt(f),
+            Self::Boolean(l) => l.fmt(f),
+            Self::List(l_l) => write!(f, "[{}]", l_l.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")),
+            Self::Void => write!(f, "void literal")
+
+        }
+    }
 }
 
 impl From<Literal> for bool {

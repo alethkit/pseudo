@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Location {
@@ -12,8 +13,61 @@ impl Location {
     }
 }
 
-impl fmt::Display for Location {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Location {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "Line {}, Column {}", self.line, self.column)
+    }
+}
+
+#[derive(Debug)]
+pub struct Locatable<T> {
+    t: T,
+    loc: Location,
+}
+
+impl<T> Locatable<T> {
+    pub fn new(t: T, loc: Location) -> Self {
+        Locatable { t, loc }
+    }
+
+    pub fn deloc(self) -> T {
+        self.t
+    }
+    pub fn deloc_ref(&self) -> &T {
+        &self.t
+    }
+
+    pub fn get_loc(self) -> Location {
+        self.loc
+    }
+
+    pub fn loc_ref(&self) -> &Location {
+        &self.loc
+    }
+    pub fn from_res<E>((res, loc): (Result<T, E>, Location)) -> Result<Locatable<T>, Locatable<E>> {
+        match res {
+            Ok(val) => Ok(Locatable::new(val, loc)),
+            Err(e) => Err(Locatable::new(e, loc)),
+        }
+    }
+
+    pub fn deconstruct(self) -> (T, Location) {
+        (self.t, self.loc)
+    }
+
+    pub fn deconstruct_ref(&self) -> (&T, &Location) {
+        (&self.t, &self.loc)
+    }
+}
+
+impl<T: Display> Display for Locatable<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.loc, self.t)
+    }
+}
+
+impl<T> From<(T, Location)> for Locatable<T> {
+    fn from((t, loc): (T, Location)) -> Self {
+        Self { t, loc }
     }
 }

@@ -11,14 +11,14 @@ pub fn run_program(contents: &str, mut provider: impl IOProvider + Clone + 'stat
         match program {
             Ok(stmts) => {
                 let mut inter = Interpreter::new(Box::new(provider.clone()));
-                if let Err(e) = inter.execute(&stmts.into_iter().map(|c| c.0).collect()) {
-                    provider.show_err(&format!("Runtime error: {:#?}", e));
+                if let Err(e) = inter.execute(&stmts.into_iter().map(|a| a.deloc()).collect()) {
+                    provider.show_err(&format!("Runtime error: {}", e));
                 }
             }
-            Err(e) => provider.show_err(&format!("Error: {:#?}", e)),
+            Err(e) => provider.show_err(&format!("Error: {}", e)),
         }
     } else {
-        let err_string = format!("Errors: {:#?}", errors);
+        let err_string = format!("Errors: {}", errors);
         provider.show_err(&err_string);
     }
 }
