@@ -18,7 +18,14 @@ pub fn run_program(contents: &str, mut provider: impl IOProvider + Clone + 'stat
             Err(e) => provider.show_err(&format!("Error: {}", e)),
         }
     } else {
-        let err_string = format!("Errors: {}", errors);
+        let err_string = format!(
+            "Errors: {}",
+            errors
+                .into_iter()
+                .map(|r| r.unwrap_err().to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
         provider.show_err(&err_string);
     }
 }
