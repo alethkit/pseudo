@@ -85,13 +85,16 @@ impl Expression {
                 Err(RuntimeError::MustBeCalled)
             }
             Expression::Call { callee, args, .. } => {
+                interpreter.increment_stack_count()?;
                 let evaluated_args: Vec<Literal> = args
                     .iter()
                     .map(|expr| expr.evaluate(Rc::clone(&env), interpreter))
                     .collect::<Result<_, _>>()?;
-                interpreter
+                let val = interpreter
                     .get_callable(callee)
-                    .call(evaluated_args, interpreter)
+                    .call(evaluated_args, interpreter);
+                interpreter.decrement_stack_count();
+                val
             }
         }
     }

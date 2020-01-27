@@ -12,6 +12,7 @@ pub struct Interpreter {
     env: EnvWrapper,
     functions: FunctionScope,
     io_provider: Box<dyn IOProvider>,
+    stack_count: u64
 }
 
 impl Interpreter {
@@ -25,6 +26,7 @@ impl Interpreter {
             functions,
             env: Rc::new(RefCell::new(Environment::new())),
             io_provider,
+            stack_count: 0
         }
     }
 
@@ -38,8 +40,26 @@ impl Interpreter {
             functions,
             env,
             io_provider,
+            stack_count: 0
         }
     
+    }
+
+    pub fn increment_stack_count(&mut self) -> Result<(), RuntimeError> {
+        if self.stack_count >= 255 {
+            Err(RuntimeError::StackOverflow)
+        }
+        else {
+            self.stack_count += 1;
+            Ok(())
+        }
+    }
+
+    pub fn decrement_stack_count(&mut self)  {
+        //Stack count should not decrement beyond 0, so any exceptions should be unhandled to
+        //detect an error
+        self.stack_count -= 1;
+
     }
     
     pub fn get_prov(&mut self) -> &mut Box<dyn IOProvider> {

@@ -15,6 +15,7 @@ pub enum RuntimeError {
     InvalidInteger,
     InvalidReal,
     InvalidCharacter,
+    StackOverflow,
     IOError(IOError),
 }
 
@@ -31,6 +32,7 @@ impl Display for RuntimeError {
             Self::InvalidInteger => write!(f, "The given string cannot be parsed into an integer"),
             Self::InvalidReal => write!(f, "The given string cannot be parsed into a real"),
             Self::InvalidCharacter => write!(f, "The given integer cannot be converted into a valid character"),
+            Self::StackOverflow => write!(f, "The call stack limit has been reached. If using a recursive function, please check it has a base case."),
             Self::IOError(e) => write!(f, "An error occured in user I/O: {}", e)
         }
     }
