@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"] // Removes terminal window
 mod gui;
 mod utils;
 use gio::prelude::{ApplicationExt, ApplicationExtManual};
