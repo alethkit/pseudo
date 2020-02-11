@@ -2,8 +2,8 @@
 IOError represents a I/O error i,e one which is dependant on the IOProvider.
 As such, the error only consists of a string indicating the error message.
 */
-use std::io::Error as ConsoleIoError;
 use std::fmt::{Display, Formatter, Result};
+use std::io::Error as ConsoleIoError;
 
 #[derive(Debug, PartialEq)]
 // Field left public so IOProvider implementations can construct IOError directly, rather than with

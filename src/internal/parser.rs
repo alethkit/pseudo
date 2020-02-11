@@ -1,7 +1,7 @@
 /*
- The parser performs syntax analysis on tokens, and outputs an abstract syntax tree.
- The AST is then interpreted directly.
- */
+The parser performs syntax analysis on tokens, and outputs an abstract syntax tree.
+The AST is then interpreted directly.
+*/
 use super::ast::{
     callable::{NativeFunction, GLOBALS},
     expression::{ExprIdentifier, Expression},
@@ -16,9 +16,9 @@ use std::mem::{discriminant, swap};
 
 type TypeScope = HashMap<String, Type>;
 /*
- TypeScope is a hash table that tracks declared variables with their types.
- This allows for variable types to be checked 
- */
+TypeScope is a hash table that tracks declared variables with their types.
+This allows for variable types to be checked
+*/
 
 #[derive(Debug)]
 enum CallableTypeSpecifier {
@@ -26,7 +26,7 @@ enum CallableTypeSpecifier {
     CallableTypeSpecifier specifies the return types of functions,
     and provides methods for validating input arguments.
 
-    It is needed so that arguments and return types from functions can be 
+    It is needed so that arguments and return types from functions can be
     checked before execution, rather than arising as a runtime error.
      */
     Subroutine(Vec<Type>, Type),
@@ -71,9 +71,9 @@ where
     T: Iterator<Item = Locatable<Token>>,
 {
     /*
-     The parser struct takes in an iterator of tokens, which are then parsed
-     into an abstract syntax tree.
-     */
+    The parser struct takes in an iterator of tokens, which are then parsed
+    into an abstract syntax tree.
+    */
     tokens: Peekable<T>, //Peekable allows for tokens to be viewed without consuming them.
     function_scope: HashMap<String, CallableTypeSpecifier>, // Functions are G L O B A L
     type_scope: TypeScope, // Used to keep track of variables and their types for variable expressions.
@@ -101,12 +101,12 @@ type LocResult<T> = Result<Locatable<T>, Locatable<ParserError>>;
 // The location field is duplicated so results can be handled using standard error operators.
 // Had (Result<T< ParserError>, Location) been used, the `?` operator would not work directly.
 
-macro_rules! recursive_descent { 
+macro_rules! recursive_descent {
     /*
-     In order to reduce repetition in the code handling operator parsing, 
+     In order to reduce repetition in the code handling operator parsing,
      the code implementing the recursive descent algorithm for
      binary operators has been factored out into a separate macro.
-     
+
      A regular function cannot be used, since functions cannot accept
      patterns as parameters.
      */
@@ -150,7 +150,11 @@ where
     );
 
     fn consume(&mut self, kind: Token) -> LocResult<Token> {
-        let (test, loc) = self.tokens.next().ok_or(Parser::<T>::UnexpectedEOF)?.deconstruct();
+        let (test, loc) = self
+            .tokens
+            .next()
+            .ok_or(Parser::<T>::UnexpectedEOF)?
+            .deconstruct();
         if discriminant(&test) == discriminant(&kind) {
             Ok(Locatable::new(test, loc))
         } else {
@@ -215,7 +219,10 @@ where
                     } => {
                         self.check_type(&val, expr.get_type(), loc2)?;
                         let ident = self.get_ident(expr).map_err(|e| (e, loc2))?;
-                        Ok(Locatable::new(Expression::Assignment(ident, Box::new(val)), loc2))
+                        Ok(Locatable::new(
+                            Expression::Assignment(ident, Box::new(val)),
+                            loc2,
+                        ))
                     }
 
                     Expression::Constant(_, _) => {
@@ -287,11 +294,14 @@ where
         let (expr, loc) = self.index()?.deconstruct();
         if let Some(Token::LeftParenthesis) = self.tokens.peek().map(Locatable::deloc_ref) {
             self.tokens.next();
-            let arguments = if let Some(Token::RightParenthesis) = self.tokens.peek().map(Locatable::deloc_ref) {
+            let arguments = if let Some(Token::RightParenthesis) =
+                self.tokens.peek().map(Locatable::deloc_ref)
+            {
                 self.tokens.next();
                 Vec::new()
             } else {
-                self.comma_separated_values(Token::RightParenthesis, Parser::expression)?.deloc()
+                self.comma_separated_values(Token::RightParenthesis, Parser::expression)?
+                    .deloc()
             };
             match expr {
                 Expression::Subroutine(name, t) | Expression::NativeFunction(name, t) => {
@@ -327,7 +337,12 @@ where
     }
 
     fn primary(&mut self) -> LocResult<Expression> {
-        match self.tokens.next().ok_or(Parser::<T>::UnexpectedEOF)?.deconstruct() {
+        match self
+            .tokens
+            .next()
+            .ok_or(Parser::<T>::UnexpectedEOF)?
+            .deconstruct()
+        {
             (Token::Literal(lit), loc) => Ok(Locatable::new(Expression::Literal(lit), loc)),
             (Token::LeftParenthesis, _) => {
                 let (expr, loc) = self.expression()?.deconstruct();
@@ -346,14 +361,20 @@ where
             (Token::ConstIdentifier(name), loc) => match self.type_scope.get(&name) {
                 Some(t) => Ok(Locatable::new(Expression::Constant(name, t.clone()), loc)),
                 None => match self.function_scope.get(&name) {
-                    Some(spec) => Ok(Locatable::new(Expression::NativeFunction(name, spec.get_type()), loc)),
+                    Some(spec) => Ok(Locatable::new(
+                        Expression::NativeFunction(name, spec.get_type()),
+                        loc,
+                    )),
                     None => Err(Locatable::new(ParserError::UndefinedConstant(name), loc)),
                 },
             },
             (Token::VarIdentifier(name), loc) => match self.type_scope.get(&name) {
                 Some(t) => Ok(Locatable::new(Expression::Variable(name, t.clone()), loc)),
                 None => match self.function_scope.get(&name) {
-                    Some(spec) => Ok(Locatable::new(Expression::Subroutine(name, spec.get_type()), loc)),
+                    Some(spec) => Ok(Locatable::new(
+                        Expression::Subroutine(name, spec.get_type()),
+                        loc,
+                    )),
                     None => Err(Locatable::new(ParserError::UndefinedVariable(name), loc)),
                 },
             },
@@ -363,8 +384,9 @@ where
     }
 
     fn list(&mut self) -> LocResult<Expression> {
-        let (list_elements, loc) =
-            self.comma_separated_values(Token::RightBracket, Parser::expression)?.deconstruct();
+        let (list_elements, loc) = self
+            .comma_separated_values(Token::RightBracket, Parser::expression)?
+            .deconstruct();
         let first_lit_type = list_elements
             .iter()
             .next()
@@ -414,7 +436,10 @@ where
     fn var_declaration(&mut self) -> LocResult<Statement> {
         self.consume(Token::Colon)?;
         let var_type = self.type_hint()?.deloc();
-        let (var_name, loc) = match self.consume(Token::VarIdentifier(String::new()))?.deconstruct() {
+        let (var_name, loc) = match self
+            .consume(Token::VarIdentifier(String::new()))?
+            .deconstruct()
+        {
             (Token::VarIdentifier(var_name), loc) => (var_name, loc),
             _ => unreachable!("consume should have checked type"),
         };
@@ -426,13 +451,19 @@ where
             Err(Locatable::new(ParserError::AlreadyDefinedAsFunction, loc))
         } else {
             self.type_scope.insert(var_name.clone(), var_type);
-            Ok(Locatable::new(Statement::VarDeclaration(var_name, var_val), loc))
+            Ok(Locatable::new(
+                Statement::VarDeclaration(var_name, var_val),
+                loc,
+            ))
         }
     }
     fn constant_declaration(&mut self) -> LocResult<Statement> {
         self.consume(Token::Colon)?;
         let const_type = self.type_hint()?.deloc();
-        let (const_name, loc) = match self.consume(Token::ConstIdentifier(String::new()))?.deconstruct() {
+        let (const_name, loc) = match self
+            .consume(Token::ConstIdentifier(String::new()))?
+            .deconstruct()
+        {
             (Token::ConstIdentifier(const_name), loc) => (const_name, loc),
             _ => unreachable!("consume should have checked type"),
         };
@@ -444,22 +475,30 @@ where
             Err(Locatable::new(ParserError::AlreadyDefinedAsFunction, loc))
         } else {
             self.type_scope.insert(const_name.clone(), const_type); // Scope allows us to keep track of current variables and their types.
-            Ok(Locatable::new(Statement::ConstDeclaraction(const_name, const_val), loc))
+            Ok(Locatable::new(
+                Statement::ConstDeclaraction(const_name, const_val),
+                loc,
+            ))
         }
     }
     fn subroutine_declaration(&mut self) -> LocResult<Statement> {
         // TODO: Check if defined as variable
-        let (subroutine_name, loc) = match self.consume(Token::VarIdentifier(String::new()))?.deconstruct() {
+        let (subroutine_name, loc) = match self
+            .consume(Token::VarIdentifier(String::new()))?
+            .deconstruct()
+        {
             (Token::VarIdentifier(name), loc) => (name, loc),
             _ => unreachable!("consume checks type"),
         };
         self.consume(Token::LeftParenthesis)?;
-        let parameters = if let Some(Token::RightParenthesis) = self.tokens.peek().map(Locatable::deloc_ref) {
-            self.tokens.next();
-            Vec::new()
-        } else {
-            self.comma_separated_values(Token::RightParenthesis, Parser::name_type_pair)?.deloc()
-        };
+        let parameters =
+            if let Some(Token::RightParenthesis) = self.tokens.peek().map(Locatable::deloc_ref) {
+                self.tokens.next();
+                Vec::new()
+            } else {
+                self.comma_separated_values(Token::RightParenthesis, Parser::name_type_pair)?
+                    .deloc()
+            };
         let return_type = if let Some(Token::Arrow) = self.tokens.peek().map(Locatable::deloc_ref) {
             self.tokens.next();
             self.type_hint()?.deloc()
@@ -477,10 +516,12 @@ where
             CallableTypeSpecifier::Subroutine(parameter_type_list, return_type.clone()),
         ); // Inserts own function to allow for recursive functions
 
-        let body = self.block_statement(
-            &[Token::EndSubroutine],
-            &mut (|s| Parser::local_declaration(s, Some(return_type.clone()))),
-        )?.deloc();
+        let body = self
+            .block_statement(
+                &[Token::EndSubroutine],
+                &mut (|s| Parser::local_declaration(s, Some(return_type.clone()))),
+            )?
+            .deloc();
         swap(&mut self.type_scope, &mut type_scope_placeholder);
         self.consume(Token::EndSubroutine)?;
 
@@ -519,7 +560,10 @@ where
     }
 
     fn name_type_pair(&mut self) -> LocResult<(String, Type)> {
-        let (name, _) = match self.consume(Token::VarIdentifier(String::new()))?.deconstruct() {
+        let (name, _) = match self
+            .consume(Token::VarIdentifier(String::new()))?
+            .deconstruct()
+        {
             (Token::VarIdentifier(name), loc) => (name, loc),
             _ => unreachable!("consume checks type"),
         };
@@ -552,15 +596,23 @@ where
     fn type_hint(&mut self) -> LocResult<Type> {
         // The type hint declares the expected type for the variable, which is what is used
         // to validate against values, return types and parameter types.
-        match self.tokens.next().ok_or(Parser::<T>::UnexpectedEOF)?.deconstruct() {
+        match self
+            .tokens
+            .next()
+            .ok_or(Parser::<T>::UnexpectedEOF)?
+            .deconstruct()
+        {
             (t @ Token::Int, loc)
             | (t @ Token::Real, loc)
             | (t @ Token::Bool, loc)
             | (t @ Token::Char, loc)
             | (t @ Token::String, loc) => {
                 let (mut cur_type, loc) = (Type::from(t), loc);
-                while let Token::LeftBracket =
-                    self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)?.deloc_ref()
+                while let Token::LeftBracket = self
+                    .tokens
+                    .peek()
+                    .ok_or(Parser::<T>::UnexpectedEOF)?
+                    .deloc_ref()
                 {
                     self.tokens.next();
                     self.consume(Token::RightBracket)?;
@@ -585,18 +637,24 @@ where
         let (condition, loc) = self.expression()?.deconstruct();
         self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Then)?;
-        let body = self.block_statement(&[Token::Else, Token::EndIf], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?.deloc();
-        let alternative =
-            if let Token::Else = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)?.deloc_ref() {
-                self.tokens.next();
-                Some(self.block_statement(&[Token::EndIf], &mut |s| {
-                    Parser::statement(s, return_type.clone())
-                })?)
-            } else {
-                None
-            };
+        let body = self
+            .block_statement(&[Token::Else, Token::EndIf], &mut |s| {
+                Parser::statement(s, return_type.clone())
+            })?
+            .deloc();
+        let alternative = if let Token::Else = self
+            .tokens
+            .peek()
+            .ok_or(Parser::<T>::UnexpectedEOF)?
+            .deloc_ref()
+        {
+            self.tokens.next();
+            Some(self.block_statement(&[Token::EndIf], &mut |s| {
+                Parser::statement(s, return_type.clone())
+            })?)
+        } else {
+            None
+        };
         self.consume(Token::EndIf)?;
         Ok(Locatable::new(
             Statement::If {
@@ -612,17 +670,21 @@ where
         let (condition, loc) = self.expression()?.deconstruct();
         self.check_type(&condition, Type::Boolean, loc)?;
         self.consume(Token::Do)?;
-        let body = self.block_statement(&[Token::EndWhile], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?.deloc();
+        let body = self
+            .block_statement(&[Token::EndWhile], &mut |s| {
+                Parser::statement(s, return_type.clone())
+            })?
+            .deloc();
         self.consume(Token::EndWhile)?;
         Ok(Locatable::new(Statement::While { condition, body }, loc))
     }
 
     fn do_while_statement(&mut self, return_type: Option<Type>) -> LocResult<Statement> {
-        let body = self.block_statement(&[Token::While], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?.deloc();
+        let body = self
+            .block_statement(&[Token::While], &mut |s| {
+                Parser::statement(s, return_type.clone())
+            })?
+            .deloc();
         self.consume(Token::While)?;
         let (condition, loc) = self.expression()?.deconstruct();
         self.check_type(&condition, Type::Boolean, loc)?;
@@ -631,7 +693,10 @@ where
     }
 
     fn for_statement(&mut self, return_type: Option<Type>) -> LocResult<Statement> {
-        let (loop_var, loc) = match self.consume(Token::VarIdentifier(String::new()))?.deconstruct() {
+        let (loop_var, loc) = match self
+            .consume(Token::VarIdentifier(String::new()))?
+            .deconstruct()
+        {
             (Token::VarIdentifier(loop_var), loc) => (loop_var, loc),
             _ => unreachable!("consume checks type"),
         };
@@ -642,7 +707,12 @@ where
         let (end_val, end_loc) = self.expression()?.deconstruct();
         self.check_type(&end_val, Type::Integer, end_loc)?;
         let step_val = {
-            if let Token::Step = self.tokens.peek().ok_or(Parser::<T>::UnexpectedEOF)?.deloc_ref() {
+            if let Token::Step = self
+                .tokens
+                .peek()
+                .ok_or(Parser::<T>::UnexpectedEOF)?
+                .deloc_ref()
+            {
                 self.tokens.next();
                 let (val, loc) = self.expression()?.deconstruct();
                 self.check_type(&val, Type::Integer, loc)?;
@@ -653,9 +723,11 @@ where
         };
         self.consume(Token::Do)?;
         self.type_scope.insert(loop_var.clone(), Type::Integer); // Adds loop variable to scope temporarily.
-        let body = self.block_statement(&[Token::EndFor], &mut |s| {
-            Parser::statement(s, return_type.clone())
-        })?.deloc();
+        let body = self
+            .block_statement(&[Token::EndFor], &mut |s| {
+                Parser::statement(s, return_type.clone())
+            })?
+            .deloc();
         self.consume(Token::EndFor)?;
         self.type_scope.remove(&loop_var);
         Ok(Locatable::new(
@@ -672,7 +744,12 @@ where
 
     fn statement(&mut self, return_type: Option<Type>) -> LocResult<Statement> {
         // Statements are allowed in any sort of statement block.
-        match self.tokens.peek().map(Locatable::deloc_ref).ok_or(Parser::<T>::UnexpectedEOF)? {
+        match self
+            .tokens
+            .peek()
+            .map(Locatable::deloc_ref)
+            .ok_or(Parser::<T>::UnexpectedEOF)?
+        {
             Token::If => {
                 self.tokens.next();
                 self.if_statement(return_type)
@@ -700,7 +777,12 @@ where
 
     fn local_declaration(&mut self, return_type: Option<Type>) -> LocResult<Statement> {
         // Local declarations are only allowed in functions and the global program.
-        match self.tokens.peek().map(Locatable::deloc_ref).ok_or(Parser::<T>::UnexpectedEOF)? {
+        match self
+            .tokens
+            .peek()
+            .map(Locatable::deloc_ref)
+            .ok_or(Parser::<T>::UnexpectedEOF)?
+        {
             Token::Var => {
                 self.tokens.next();
                 self.var_declaration()
@@ -714,14 +796,15 @@ where
     }
 
     fn return_statement(&mut self, return_type: Type) -> LocResult<Statement> {
-        let (expr, loc) = if let Some(Token::SemiColon) = self.tokens.peek().map(Locatable::deloc_ref) {
-            let loc_semicolon = self.consume(Token::SemiColon)?.get_loc();
-            (Expression::Literal(Literal::Void), loc_semicolon)
-        } else {
-            let val = self.expression()?;
-            self.consume(Token::SemiColon)?;
-            val.deconstruct()
-        };
+        let (expr, loc) =
+            if let Some(Token::SemiColon) = self.tokens.peek().map(Locatable::deloc_ref) {
+                let loc_semicolon = self.consume(Token::SemiColon)?.get_loc();
+                (Expression::Literal(Literal::Void), loc_semicolon)
+            } else {
+                let val = self.expression()?;
+                self.consume(Token::SemiColon)?;
+                val.deconstruct()
+            };
         let expr_type = expr.get_type();
         if expr_type == return_type {
             Ok(Locatable::new(Statement::Return(expr), loc))
@@ -736,7 +819,12 @@ where
     fn global_declaration(&mut self) -> LocResult<Statement> {
         // Global declarations i.e function declarations are only allowed in the global program.
         // This means functions cannot be defined inside functions.
-        match self.tokens.peek().map(Locatable::deloc_ref).ok_or(Parser::<T>::UnexpectedEOF)? {
+        match self
+            .tokens
+            .peek()
+            .map(Locatable::deloc_ref)
+            .ok_or(Parser::<T>::UnexpectedEOF)?
+        {
             Token::Subroutine => {
                 self.tokens.next();
                 self.subroutine_declaration()

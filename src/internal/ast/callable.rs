@@ -2,7 +2,7 @@
  Callable implements both user-defined subroutines
  and native functions that are predefined.
 
- Native functions are added to the parser and interpreter 
+ Native functions are added to the parser and interpreter
  before parsing and execution, respectively.
 */
 

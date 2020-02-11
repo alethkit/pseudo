@@ -37,8 +37,10 @@ fn do_while_loop_normal() {
         OUTPUT(INT_TO_STRING(a));
         a = a + 1;
         WHILE a != 4
-        ENDDOWHILE"
-    , vec!["1","2","3"]).unwrap())
+        ENDDOWHILE",
+        vec!["1", "2", "3"]
+    )
+    .unwrap())
 }
 
 #[test]
@@ -48,8 +50,10 @@ fn boolean_integer_do_while_loop_error() {
             "DO 
             OUTPUT(\"1\");
             WHILE 1
-            ENDDOWHILE"
-        ,vec!["1"]).unwrap_err(),
+            ENDDOWHILE",
+            vec!["1"]
+        )
+        .unwrap_err(),
         PseudocodeError::Type(TypeError::SingleExpected(Type::Boolean, Type::Integer))
     )
 }

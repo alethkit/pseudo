@@ -1,8 +1,8 @@
 /*
- The internal module isolates the internals of the interpreter from the GUI frontend.
- This allows for an alternative GUI to be implemented, or for the interpreter
- to be accessed from a console prompt.
- */
+The internal module isolates the internals of the interpreter from the GUI frontend.
+This allows for an alternative GUI to be implemented, or for the interpreter
+to be accessed from a console prompt.
+*/
 mod ast;
 mod environment;
 mod error;
@@ -18,8 +18,8 @@ pub use parser::Parser;
 pub use error::IOError;
 
 // Used for integration tests
-pub use ast::{Literal, Type, Token, Callable};
 pub use ast::Callable::Subroutine;
+pub use ast::{Callable, Literal, Token, Type};
 pub use environment::{EnvWrapper, Environment, Identifier};
 
-pub use error::{PseudocodeError, RuntimeError, TypeError, ParserError};
+pub use error::{ParserError, PseudocodeError, RuntimeError, TypeError};

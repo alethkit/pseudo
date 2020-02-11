@@ -1,6 +1,6 @@
 /*
- An implementation of IOProvider for the program's GUI
- */
+An implementation of IOProvider for the program's GUI
+*/
 use glib::markup_escape_text;
 use gtk::prelude::{ContainerExt, DialogExt, EntryExt, TextBufferExt, WidgetExt};
 use gtk::{TextBuffer, Window};

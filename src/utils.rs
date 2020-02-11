@@ -6,7 +6,7 @@ pub fn run_program(contents: &str, mut provider: impl IOProvider + Clone + 'stat
     let lex = Lexer::from(chars);
     let (tokens, errors): (Vec<_>, Vec<_>) = lex.partition(Result::is_ok);
     if errors.is_empty() {
-    // Runs only if no errors in the lexing phrase
+        // Runs only if no errors in the lexing phrase
         let pars = Parser::from(tokens.into_iter().map(Result::unwrap));
         let program: Result<Vec<_>, _> = pars.collect();
         match program {

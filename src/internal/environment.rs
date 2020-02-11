@@ -1,11 +1,11 @@
 /*
- The Environment struct handles variable storage for a local scope.
- The interpreter has its own Environment, and when called, each function
- also has its own Environment.
+The Environment struct handles variable storage for a local scope.
+The interpreter has its own Environment, and when called, each function
+also has its own Environment.
 
- For loops also have their own Environment, in order to include
- a loop variable.
- */
+For loops also have their own Environment, in order to include
+a loop variable.
+*/
 use super::ast::expression::ExprIdentifier;
 use super::ast::Literal;
 use super::error::RuntimeError;

@@ -4,7 +4,6 @@ use peeking_take_while::PeekableExt;
 use std::iter::Peekable;
 use std::str::Chars;
 
-
 // LocatableChars assigns a location to each character.
 // This means that the Lexer struct is only concerned with lexical analysis,
 // and not assigning a location for tokens.
@@ -50,7 +49,6 @@ impl Iterator for LocatableChars<'_> {
 type TokenResult = Result<Token, LexError>;
 
 pub struct Lexer<'a> {
-
     chars: Peekable<LocatableChars<'a>>,
 }
 
@@ -107,7 +105,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn number(&mut self) -> TokenResult {
-    //Parses number string into number token
+        //Parses number string into number token
         let num_str = self.collect_into_str(|(c, _)| c.is_ascii_digit() || *c == '.');
         match num_str.parse::<i64>() {
             Ok(int) => Ok(Token::Literal(Literal::Integer(int))),
@@ -118,7 +116,7 @@ impl<'a> Lexer<'a> {
         }
     }
     fn char_literal(&mut self) -> TokenResult {
-    // Parses char string into char literal
+        // Parses char string into char literal
         self.chars.next();
         let (c, _) = self.chars.next().ok_or(LexError::UnterminatedChar)?;
         match self.chars.next() {
@@ -185,7 +183,11 @@ mod tests {
 // Asserts that a string that contains a single token produces the expected token
     {
         let mut lex = Lexer::from(LocatableChars::from(s));
-        let val = lex.next().unwrap().map_err(Locatable::deloc).map(Locatable::deloc)?;
+        let val = lex
+            .next()
+            .unwrap()
+            .map_err(Locatable::deloc)
+            .map(Locatable::deloc)?;
         assert_eq!(&val, t);
         Ok(())
     }

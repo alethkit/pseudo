@@ -1,7 +1,6 @@
 mod common;
 use common::{evaluate_expression, execute, get_value_from_env};
-use pseudocode::{Environment, Literal, PseudocodeError, RuntimeError, Type, TypeError};
-
+use pseudocode::{Literal, PseudocodeError, RuntimeError, Type, TypeError};
 
 #[test]
 fn array_declaration_normal() {
@@ -18,10 +17,7 @@ fn array_declaration_normal() {
 
 #[test]
 fn array_assignment_normal() {
-    let new_env_wrap = execute(
-        "VAR: Int[] test_arr = [1,2,3]; test_arr = [1,2,3,4];",
-    )
-    .unwrap();
+    let new_env_wrap = execute("VAR: Int[] test_arr = [1,2,3]; test_arr = [1,2,3,4];").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_arr"),
         Literal::List(vec![
@@ -35,10 +31,8 @@ fn array_assignment_normal() {
 
 #[test]
 fn integer_string_array_assignment_error() {
-    let err = execute(
-        "VAR: Int[] test_arr = [1,2,3]; test_arr = [\"1\",\"2\",\"3\"];",
-    )
-    .unwrap_err();
+    let err =
+        execute("VAR: Int[] test_arr = [1,2,3]; test_arr = [\"1\",\"2\",\"3\"];").unwrap_err();
     assert_eq!(
         err,
         PseudocodeError::Type(TypeError::SingleExpected(
@@ -66,8 +60,7 @@ fn array_index_out_of_range_error() {
 
 #[test]
 fn array_index_assignment_normal() {
-    let new_env_wrap =
-        execute("VAR: Int[] test_arr = [1,2,3]; test_arr[0] = 5;").unwrap();
+    let new_env_wrap = execute("VAR: Int[] test_arr = [1,2,3]; test_arr[0] = 5;").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_arr"),
         Literal::List(vec![
@@ -108,10 +101,8 @@ fn two_dim_array_index_normal() {
 
 #[test]
 fn two_dim_array_index_assignment_normal() {
-    let new_env_wrap = execute(
-        "VAR: Int[][] test_arr = [[1,2,3],[4,5,6]]; test_arr[1][2] = 7;",
-    )
-    .unwrap();
+    let new_env_wrap =
+        execute("VAR: Int[][] test_arr = [[1,2,3],[4,5,6]]; test_arr[1][2] = 7;").unwrap();
     assert_eq!(
         get_value_from_env(new_env_wrap, "test_arr"),
         Literal::List(vec![

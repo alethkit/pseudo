@@ -7,7 +7,7 @@ fn random_integer_normal() {
     let val = evaluate_expression("RANDOM_INT(3,5)").unwrap();
     match val {
         Literal::Integer(i) => assert!(3 <= i && i <= 5),
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 }
 

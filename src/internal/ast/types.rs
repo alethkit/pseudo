@@ -1,7 +1,7 @@
 /*
- Type represents the type given to a value.
- It is used whereever a type is represented.
- */
+Type represents the type given to a value.
+It is used whereever a type is represented.
+*/
 use super::token::Token;
 use std::fmt::{Display, Formatter, Result};
 
@@ -29,11 +29,10 @@ impl Display for Type {
             Self::Str => write!(f, "String"),
             Self::Any => write!(f, "Any type"),
             Self::Void => write!(f, "Void"),
-            Self::NotTyped => write!(f, "Not typed")
+            Self::NotTyped => write!(f, "Not typed"),
         }
     }
 }
-
 
 impl From<Token> for Type {
     fn from(t: Token) -> Self {

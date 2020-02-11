@@ -368,7 +368,6 @@ fn integer_less_equal_greater_normal() {
     );
 }
 
-
 #[test]
 fn real_less_equal_less_normal() {
     assert_eq!(
@@ -428,7 +427,6 @@ fn integer_greater_equal_greater_normal() {
     );
 }
 
-
 #[test]
 fn real_greater_equal_less_normal() {
     assert_eq!(
@@ -463,4 +461,3 @@ fn integer_real_greater_equal_error() {
         ))
     )
 }
-

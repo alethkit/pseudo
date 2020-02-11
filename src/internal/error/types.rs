@@ -1,6 +1,6 @@
 /*
- TypeError represents error due to type constraints not being met by the user.
- */
+TypeError represents error due to type constraints not being met by the user.
+*/
 
 use super::super::ast::Type;
 use std::fmt::{Display, Formatter, Result};
@@ -35,8 +35,6 @@ impl Display for TypeError {
              l2.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")),
              Self::ArgumentMistatchOneOf(l1, l2) => write!(f, "Expected one of the following argument lists: {}, but instead got: {}", l1.iter().map(|l| l.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")).collect::<Vec<_>>().join(";") ,l2.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")),
              Self::InvalidReturnType(t1, t2) => write!(f, "Expected a return type of {}, but instead got a return type of {}",t1,t2)
-                
-
         }
     }
 }

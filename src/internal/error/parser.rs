@@ -1,6 +1,6 @@
 /*
- ParserError represents errors that take place during syntax analysis.
- */
+ParserError represents errors that take place during syntax analysis.
+*/
 
 use super::super::ast::Token;
 use super::TypeError;
@@ -25,7 +25,6 @@ pub enum ParserError {
     SubroutineRequiresReturn,
     ReturnOutsideSubroutine,
 }
-
 
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {

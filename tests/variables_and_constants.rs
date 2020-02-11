@@ -1,6 +1,6 @@
 mod common;
 use common::{execute, get_value_from_env};
-use pseudocode::{Environment, Literal, ParserError, PseudocodeError, Token, Type, TypeError};
+use pseudocode::{Literal, ParserError, PseudocodeError, Token, Type, TypeError};
 
 use std::rc::Rc;
 
@@ -78,8 +78,7 @@ fn constant_identifier_variable_declaration_error() {
 
 #[test]
 fn variable_identifier_constant_declaration_error() {
-    let err =
-        execute("CONSTANT: String not_con = \"bob\";").unwrap_err();
+    let err = execute("CONSTANT: String not_con = \"bob\";").unwrap_err();
     assert_eq!(
         err,
         PseudocodeError::Parsing(ParserError::Expected(Token::ConstIdentifier(String::new())))
@@ -88,8 +87,7 @@ fn variable_identifier_constant_declaration_error() {
 
 #[test]
 fn integer_variable_assignment_normal() {
-    let new_env_wrap =
-        execute("VAR: Int test_i = 1; test_i = 2;").unwrap();
+    let new_env_wrap = execute("VAR: Int test_i = 1; test_i = 2;").unwrap();
     assert_eq!(
         get_value_from_env(Rc::clone(&new_env_wrap), "test_i"),
         Literal::Integer(2)
@@ -98,8 +96,7 @@ fn integer_variable_assignment_normal() {
 
 #[test]
 fn type_mismatch_variable_assignment_error() {
-    let err = execute("VAR: Real test_r = 1.5; test_r = \"bar\";")
-        .unwrap_err();
+    let err = execute("VAR: Real test_r = 1.5; test_r = \"bar\";").unwrap_err();
     assert_eq!(
         err,
         PseudocodeError::Type(TypeError::SingleExpected(Type::Real, Type::Str))
@@ -108,11 +105,9 @@ fn type_mismatch_variable_assignment_error() {
 
 #[test]
 fn constant_assignment_error() {
-    let err =
-        execute("CONSTANT: Int ANSWER = 42; ANSWER = 43;").unwrap_err();
+    let err = execute("CONSTANT: Int ANSWER = 42; ANSWER = 43;").unwrap_err();
     assert_eq!(
         err,
         PseudocodeError::Parsing(ParserError::ConstantsAreConstant)
     )
 }
-

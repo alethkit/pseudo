@@ -1,6 +1,6 @@
 /*
- Literal represents the basic values that can be used in the language.
- */
+Literal represents the basic values that can be used in the language.
+*/
 use super::types::{Type, Typed};
 use std::fmt::{Display, Formatter, Result};
 use std::string::ToString;
@@ -16,7 +16,6 @@ pub enum Literal {
     Void, // Is needed to represent the output of subroutines that do not return a literal.
 }
 
-
 impl Display for Literal {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
@@ -25,9 +24,15 @@ impl Display for Literal {
             Self::Str(l) => l.fmt(f),
             Self::Character(l) => l.fmt(f),
             Self::Boolean(l) => l.fmt(f),
-            Self::List(l_l) => write!(f, "[{}]", l_l.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")),
-            Self::Void => write!(f, "void literal")
-
+            Self::List(l_l) => write!(
+                f,
+                "[{}]",
+                l_l.iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+            Self::Void => write!(f, "void literal"),
         }
     }
 }

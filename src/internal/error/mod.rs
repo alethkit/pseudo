@@ -21,14 +21,13 @@ pub enum PseudocodeError {
     Runtime(RuntimeError),
 }
 
-
 impl Display for PseudocodeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Self::Lexing(e) => e.fmt(f),
             Self::Type(e) => e.fmt(f),
             Self::Parsing(e) => e.fmt(f),
-            Self::Runtime(e) => e.fmt(f)
+            Self::Runtime(e) => e.fmt(f),
         }
     }
 }

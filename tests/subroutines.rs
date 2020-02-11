@@ -128,7 +128,6 @@ fn subroutine_call_parameters_normal() {
 
 #[test]
 fn subroutine_call_type_mismatch_error() {
-
     assert_eq!(check_output_stream(
             "SUBROUTINE add(a: Int, b:Int) ->Int RETURN a+b; ENDSUBROUTINE OUTPUT(INT_TO_STRING(add(\"2\",3)));",
         vec!["5"]

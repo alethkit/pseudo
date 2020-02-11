@@ -38,7 +38,10 @@ fn false_false_and_normal() {
 fn boolean_integer_and_error() {
     assert_eq!(
         evaluate_expression("3 != 3 AND 1").unwrap_err(),
-        PseudocodeError::Type(TypeError::DoubleExpected((Type::Boolean, Type::Boolean), (Type::Boolean, Type::Integer)))
+        PseudocodeError::Type(TypeError::DoubleExpected(
+            (Type::Boolean, Type::Boolean),
+            (Type::Boolean, Type::Integer)
+        ))
     )
 }
 
@@ -78,7 +81,10 @@ fn false_false_or_normal() {
 fn boolean_integer_or_error() {
     assert_eq!(
         evaluate_expression("3 != 3 OR 1").unwrap_err(),
-        PseudocodeError::Type(TypeError::DoubleExpected((Type::Boolean, Type::Boolean), (Type::Boolean, Type::Integer)))
+        PseudocodeError::Type(TypeError::DoubleExpected(
+            (Type::Boolean, Type::Boolean),
+            (Type::Boolean, Type::Integer)
+        ))
     )
 }
 

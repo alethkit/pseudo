@@ -10,12 +10,12 @@ pub mod types;
 use super::error;
 
 // Structs, rather than modules, are exposed, to simplify import path
+pub use callable::Callable;
 pub use expression::Expression;
 pub use literal::Literal;
-pub use location::{Location, Locatable};
+pub use location::{Locatable, Location};
 pub use statement::Statement;
 pub use token::Token;
-pub use callable::Callable;
 
 // Although the module is public, it is reexported for easy access by TypeError
 pub use types::Type;

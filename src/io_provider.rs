@@ -6,7 +6,9 @@ pub trait IOProvider {
     fn get_line(&mut self) -> Result<String, IOError>;
     fn show_line(&mut self, line_to_be_shown: &str);
     fn show_err(&mut self, err_to_be_shown: &str);
-    fn compare_output_stream(&self, out_stream: Vec<String>) -> bool {false}
+    fn compare_output_stream(&self, _out_stream: Vec<String>) -> bool {
+        false
+    }
 }
 
 #[derive(Copy, Clone)]

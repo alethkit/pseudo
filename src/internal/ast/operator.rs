@@ -1,10 +1,10 @@
 /*
- UnaryOperator and BinaryOperator represent operators that can be
- applied to expressions.
+UnaryOperator and BinaryOperator represent operators that can be
+applied to expressions.
 
- They also serve to validate the types of input expressions,
- in addition to detecting the output type of a given operation.
- */
+They also serve to validate the types of input expressions,
+in addition to detecting the output type of a given operation.
+*/
 use super::super::error::{RuntimeError, TypeError};
 use super::expression::Expression;
 use super::literal::Literal;
