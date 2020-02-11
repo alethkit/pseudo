@@ -1,3 +1,12 @@
+/*
+ Tokens are the fundamental units that the parser interprets
+ during syntax analysis. They are produced during the lexical analysis
+ phase by the lexer.
+
+ By using tokens, error messages can be specified to requiring a specific keyword,
+ rather than to the character level, making them more useful for the users, and reducing
+ the workload of the parser.
+ */
 use super::literal::Literal;
 use std::fmt::{Display, Formatter, Result};
 

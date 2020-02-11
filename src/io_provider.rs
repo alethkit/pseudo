@@ -13,6 +13,7 @@ pub trait IOProvider {
 pub struct ConsoleIOProvider {}
 
 impl IOProvider for ConsoleIOProvider {
+    // Interface implementations
     fn get_line(&mut self) -> Result<String, IOError> {
         let mut line = String::new();
         std::io::stdin().read_line(&mut line)?;

@@ -1,3 +1,8 @@
+/*
+ The internal module isolates the internals of the interpreter from the GUI frontend.
+ This allows for an alternative GUI to be implemented, or for the interpreter
+ to be accessed from a console prompt.
+ */
 mod ast;
 mod environment;
 mod error;

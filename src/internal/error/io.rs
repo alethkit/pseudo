@@ -1,3 +1,7 @@
+/*
+IOError represents a I/O error i,e one which is dependant on the IOProvider.
+As such, the error only consists of a string indicating the error message.
+*/
 use std::io::Error as ConsoleIoError;
 use std::fmt::{Display, Formatter, Result};
 

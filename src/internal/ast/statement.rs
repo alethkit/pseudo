@@ -1,3 +1,11 @@
+/*
+ Unlike expressions, which represent a value, statements
+ have no inherent value.
+
+ Statements are used to specify actions to take,
+ with the notable exception of assignment, which is
+ an expression.
+ */
 use super::expression::Expression;
 use super::types::Type;
 

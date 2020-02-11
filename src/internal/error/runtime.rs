@@ -1,3 +1,7 @@
+/*
+ RuntimeError represens errors that can only be detected at runtime i.e cannot be detected
+ with static analysis and hence require evaluation.
+ */
 use super::IOError;
 use core::num::{ParseFloatError, ParseIntError};
 use std::fmt::{Display, Formatter, Result};

@@ -1,3 +1,7 @@
+/*
+ Location is used to keep track of where errors take place,
+ so that errors shown to users can be more easily tracked.
+ */
 use std::fmt;
 use std::fmt::{Display, Formatter};
 

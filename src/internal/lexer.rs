@@ -4,6 +4,10 @@ use peeking_take_while::PeekableExt;
 use std::iter::Peekable;
 use std::str::Chars;
 
+
+// LocatableChars assigns a location to each character.
+// This means that the Lexer struct is only concerned with lexical analysis,
+// and not assigning a location for tokens.
 pub struct LocatableChars<'a> {
     line: u64,
     column: u64,
@@ -30,6 +34,8 @@ impl Iterator for LocatableChars<'_> {
                 self.line += 1;
                 self.column = 0;
                 self.chars.next();
+                // Newlines are replaced with a whitespace character so that
+                // newlines act as a boundary between tokens.
                 Some((' ', cur_loc))
             }
             _ => {
@@ -44,6 +50,7 @@ impl Iterator for LocatableChars<'_> {
 type TokenResult = Result<Token, LexError>;
 
 pub struct Lexer<'a> {
+
     chars: Peekable<LocatableChars<'a>>,
 }
 
@@ -57,6 +64,8 @@ impl<'a> From<LocatableChars<'a>> for Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     fn skip_whitespace_and_comments(&mut self) {
+        // Removes whitespace and comment lines from the stream of characters.
+        // This ensures that commented lines are not treated as syntax.
         while let Some((c, l)) = self.chars.peek() {
             if c.is_whitespace() {
                 self.chars.next();
@@ -98,6 +107,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn number(&mut self) -> TokenResult {
+    //Parses number string into number token
         let num_str = self.collect_into_str(|(c, _)| c.is_ascii_digit() || *c == '.');
         match num_str.parse::<i64>() {
             Ok(int) => Ok(Token::Literal(Literal::Integer(int))),
@@ -108,6 +118,7 @@ impl<'a> Lexer<'a> {
         }
     }
     fn char_literal(&mut self) -> TokenResult {
+    // Parses char string into char literal
         self.chars.next();
         let (c, _) = self.chars.next().ok_or(LexError::UnterminatedChar)?;
         match self.chars.next() {
@@ -116,6 +127,7 @@ impl<'a> Lexer<'a> {
         }
     }
     fn str_literal(&mut self) -> TokenResult {
+        //Parses quoted string into string literal
         self.chars.next();
         let s = self.collect_into_str(|(c, _)| *c != '"');
         match self.chars.next() {
@@ -126,6 +138,10 @@ impl<'a> Lexer<'a> {
 }
 
 impl Iterator for Lexer<'_> {
+    // This is where the bulk of the lexical analysis takes place.
+    // The Iterator trait (interface) specifies how the next token is to be fetched.
+    // Helper methods then repeat this process for the entire stream
+    // of characters.
     type Item = Result<Locatable<Token>, Locatable<LexError>>;
     fn next(&mut self) -> Option<Self::Item> {
         use LexError::*;

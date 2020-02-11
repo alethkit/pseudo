@@ -1,3 +1,7 @@
+/*
+ The parser performs syntax analysis on tokens, and outputs an abstract syntax tree.
+ The AST is then interpreted directly.
+ */
 use super::ast::{
     callable::{NativeFunction, GLOBALS},
     expression::{ExprIdentifier, Expression},
@@ -11,9 +15,20 @@ use std::iter::Peekable;
 use std::mem::{discriminant, swap};
 
 type TypeScope = HashMap<String, Type>;
+/*
+ TypeScope is a hash table that tracks declared variables with their types.
+ This allows for variable types to be checked 
+ */
 
 #[derive(Debug)]
 enum CallableTypeSpecifier {
+    /*
+    CallableTypeSpecifier specifies the return types of functions,
+    and provides methods for validating input arguments.
+
+    It is needed so that arguments and return types from functions can be 
+    checked before execution, rather than arising as a runtime error.
+     */
     Subroutine(Vec<Type>, Type),
     NativeFunction(NativeFunction),
 }
@@ -55,7 +70,11 @@ pub struct Parser<T>
 where
     T: Iterator<Item = Locatable<Token>>,
 {
-    tokens: Peekable<T>,
+    /*
+     The parser struct takes in an iterator of tokens, which are then parsed
+     into an abstract syntax tree.
+     */
+    tokens: Peekable<T>, //Peekable allows for tokens to be viewed without consuming them.
     function_scope: HashMap<String, CallableTypeSpecifier>, // Functions are G L O B A L
     type_scope: TypeScope, // Used to keep track of variables and their types for variable expressions.
 }
@@ -82,7 +101,15 @@ type LocResult<T> = Result<Locatable<T>, Locatable<ParserError>>;
 // The location field is duplicated so results can be handled using standard error operators.
 // Had (Result<T< ParserError>, Location) been used, the `?` operator would not work directly.
 
-macro_rules! recursive_descent {
+macro_rules! recursive_descent { 
+    /*
+     In order to reduce repetition in the code handling operator parsing, 
+     the code implementing the recursive descent algorithm for
+     binary operators has been factored out into a separate macro.
+     
+     A regular function cannot be used, since functions cannot accept
+     patterns as parameters.
+     */
     ($self:ident, $lhs:ident, $rhs:ident, $($ops:pat) | +, $add:stmt) => {{
         let  (mut expr, loc) = $self.$lhs()?.deconstruct();
         while let Some(kind) = $self.tokens.peek() {
@@ -276,7 +303,6 @@ where
                     call_typer
                         .validate(&argument_type_list)
                         .map_err(|e| (e, loc))?;
-                    //TODO: Validate argument length and type
                     return Ok(Locatable::new(
                         Expression::Call {
                             callee: name,
@@ -359,6 +385,11 @@ where
         terminator: Token,
         value_function: fn(&mut Self) -> LocResult<Val>,
     ) -> LocResult<Vec<Val>> {
+        /*
+         Since both argument lists and lists of values are separated by commas,
+        the code to parse comma-separated values has been given
+        its own function to reduce code duplication.
+         */
         let mut expression_list = Vec::new();
         expression_list.push(value_function(self)?.deloc());
         while let Some((kind, loc)) = self.tokens.next().map(Locatable::deconstruct) {
@@ -519,7 +550,8 @@ where
     }
 
     fn type_hint(&mut self) -> LocResult<Type> {
-        // What allows us to identify type errors
+        // The type hint declares the expected type for the variable, which is what is used
+        // to validate against values, return types and parameter types.
         match self.tokens.next().ok_or(Parser::<T>::UnexpectedEOF)?.deconstruct() {
             (t @ Token::Int, loc)
             | (t @ Token::Real, loc)

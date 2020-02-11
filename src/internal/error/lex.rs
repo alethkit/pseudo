@@ -1,3 +1,6 @@
+/*
+ LexError exists to represent errors that take place during lexical analysis.
+ */
 use std::error::Error;
 use std::fmt;
 

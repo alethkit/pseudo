@@ -1,3 +1,7 @@
+/*
+ Module provides interactivity for the program's GUI.
+ gui.glade provides the actual design file for the GUI.
+ */
 mod io_provider;
 use super::utils::run_program;
 use io_provider::GUIIOProvider;

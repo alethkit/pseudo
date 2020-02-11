@@ -1,3 +1,11 @@
+/*
+ Callable implements both user-defined subroutines
+ and native functions that are predefined.
+
+ Native functions are added to the parser and interpreter 
+ before parsing and execution, respectively.
+*/
+
 use super::super::environment::Environment;
 use super::super::Interpreter;
 use super::error::{ParserError, RuntimeError, TypeError};

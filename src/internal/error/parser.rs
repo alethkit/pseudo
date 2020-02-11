@@ -1,3 +1,7 @@
+/*
+ ParserError represents errors that take place during syntax analysis.
+ */
+
 use super::super::ast::Token;
 use super::TypeError;
 use std::fmt::{Display, Formatter, Result};

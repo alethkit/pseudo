@@ -1,3 +1,7 @@
+/*
+ Type represents the type given to a value.
+ It is used whereever a type is represented.
+ */
 use super::token::Token;
 use std::fmt::{Display, Formatter, Result};
 

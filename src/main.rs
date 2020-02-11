@@ -5,6 +5,7 @@ use gio::prelude::{ApplicationExt, ApplicationExtManual};
 use std::env::args;
 
 fn main() {
+    // Boilerplate code to start application GUI
     let application = gtk::Application::new(None, Default::default()).unwrap();
     application.connect_activate(|app| {
         gui::build_ui(app);

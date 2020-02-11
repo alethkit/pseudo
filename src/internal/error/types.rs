@@ -1,3 +1,7 @@
+/*
+ TypeError represents error due to type constraints not being met by the user.
+ */
+
 use super::super::ast::Type;
 use std::fmt::{Display, Formatter, Result};
 use std::string::ToString;

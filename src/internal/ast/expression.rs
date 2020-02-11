@@ -1,3 +1,9 @@
+/*
+ Expressions consist of literal values, and direct operations that can be performed
+ on said values.
+
+ It also includes subroutine calls, as they may return a literal value.
+ */
 use super::literal::Literal;
 use super::operator::{BinaryOperator, UnaryOperator};
 use super::types::{Type, Typed};

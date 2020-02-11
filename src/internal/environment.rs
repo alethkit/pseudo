@@ -1,3 +1,11 @@
+/*
+ The Environment struct handles variable storage for a local scope.
+ The interpreter has its own Environment, and when called, each function
+ also has its own Environment.
+
+ For loops also have their own Environment, in order to include
+ a loop variable.
+ */
 use super::ast::expression::ExprIdentifier;
 use super::ast::Literal;
 use super::error::RuntimeError;
@@ -109,7 +117,7 @@ impl Environment {
                 match prospective_list {
                     Literal::List(mut list) => {
                         *list.get_mut(*index).ok_or(RuntimeError::OutOfRange)? = value.clone();
-                        self.assign(id, Literal::List(list));
+                        self.assign(id, Literal::List(list))?;
                         Ok(value)
                     }
                     _ => unreachable!("Index should have been type checked on list"),

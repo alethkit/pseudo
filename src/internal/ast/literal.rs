@@ -1,3 +1,6 @@
+/*
+ Literal represents the basic values that can be used in the language.
+ */
 use super::types::{Type, Typed};
 use std::fmt::{Display, Formatter, Result};
 use std::string::ToString;
@@ -10,7 +13,7 @@ pub enum Literal {
     Character(char),
     Boolean(bool), // True and False (Stored as the boolean value)
     List(Vec<Literal>),
-    Void, // Might be needed.
+    Void, // Is needed to represent the output of subroutines that do not return a literal.
 }
 
 

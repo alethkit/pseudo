@@ -1,3 +1,6 @@
+/*
+ An implementation of IOProvider for the program's GUI
+ */
 use glib::markup_escape_text;
 use gtk::prelude::{ContainerExt, DialogExt, EntryExt, TextBufferExt, WidgetExt};
 use gtk::{TextBuffer, Window};
@@ -20,6 +23,7 @@ impl IOProvider for GUIIOProvider {
         let dialog = gtk::Dialog::new_with_buttons(
             Some("Input requested"),
             Some(&self.window),
+            // Modal dialogue ensures that users cannot skip input phase.
             gtk::DialogFlags::MODAL | gtk::DialogFlags::DESTROY_WITH_PARENT,
             &[("Send", gtk::ResponseType::Accept)],
         );
@@ -36,6 +40,8 @@ impl IOProvider for GUIIOProvider {
         Ok(contents.to_string())
     }
     fn show_line(&mut self, line_to_be_shown: &str) {
+        // Newline has to be inserted as insert method does not automatically insert a newline
+        // character
         self.output_buf
             .insert(&mut self.output_buf.get_end_iter(), line_to_be_shown);
         self.output_buf
@@ -43,6 +49,7 @@ impl IOProvider for GUIIOProvider {
     }
 
     fn show_err(&mut self, err_to_be_shown: &str) {
+        // Escaping used to prevent arbritary output to be treated as markup.
         let erred_string = "<span foreground=\"red\">".to_owned()
             + markup_escape_text(err_to_be_shown).as_str()
             + "\n</span>";

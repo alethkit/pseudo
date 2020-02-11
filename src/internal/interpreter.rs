@@ -1,3 +1,7 @@
+/*
+  The interpreter directly executes the abstract syntax tree produced 
+  by the parser.
+ */
 use super::ast::callable::{Callable, Subroutine, GLOBALS};
 use super::ast::{Expression, Literal, Statement};
 use super::environment::{EnvWrapper, Environment};
@@ -7,12 +11,17 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+/* 
+ FunctionScope stores functions by their function name.
+ Since type checking has already been done by the parser,
+ functions no longer have an associated type.
+ */
 pub type FunctionScope = HashMap<String, Callable>;
 pub struct Interpreter {
     env: EnvWrapper,
     functions: FunctionScope,
     io_provider: Box<dyn IOProvider>,
-    stack_count: u64
+    stack_count: u64 // Prevents a stack overflow error from taking place.
 }
 
 impl Interpreter {
