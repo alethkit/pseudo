@@ -61,10 +61,14 @@ impl IOProvider for TestIOProvider {
 
 pub fn evaluate_expression(expression_string: &str) -> Result<Literal, PseudocodeError> {
     let lexer = Lexer::from(LocatableChars::from(expression_string));
-    let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, l)| e)?;
+    let tokens = lexer
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.deloc())?;
     let mut parser = Parser::from(tokens.into_iter());
     let expression_result = parser.expression();
-    let expression = expression_result.map(|r| r.0).map_err(|r| r.0)?;
+    let expression = expression_result
+        .map(|r| r.deloc())
+        .map_err(|r| r.deloc())?;
     let mut inter = Interpreter::new(Box::new(TestIOProvider::new()));
     inter
         .evaluate_expression(&expression)
@@ -73,7 +77,9 @@ pub fn evaluate_expression(expression_string: &str) -> Result<Literal, Pseudocod
 
 pub fn execute(contents: &str) -> Result<EnvWrapper, PseudocodeError> {
     let lexer = Lexer::from(LocatableChars::from(contents));
-    let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, _)| e)?;
+    let tokens = lexer
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.deloc())?;
     let parser = Parser::from(tokens.into_iter());
     let program_result: Result<Vec<_>, _> = parser.collect();
     let env = Environment::new_wrapper();
@@ -81,16 +87,18 @@ pub fn execute(contents: &str) -> Result<EnvWrapper, PseudocodeError> {
         Ok(program) => {
             let mut inter =
                 Interpreter::from_environment(Rc::clone(&env), Box::new(TestIOProvider::new()));
-            inter.execute(&program.into_iter().map(|stmt| stmt.0).collect())?;
+            inter.execute(&program.into_iter().map(|stmt| stmt.deloc()).collect())?;
             Ok(env)
         }
-        Err(e) => Err(PseudocodeError::from(e.0)),
+        Err(e) => Err(PseudocodeError::from(e.deloc())),
     }
 }
 
 pub fn execute_with_input(contents: &str, input: Vec<&str>) -> Result<EnvWrapper, PseudocodeError> {
     let lexer = Lexer::from(LocatableChars::from(contents));
-    let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, _)| e)?;
+    let tokens = lexer
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.deloc())?;
     let parser = Parser::from(tokens.into_iter());
     let program_result: Result<Vec<_>, _> = parser.collect();
     let env = Environment::new_wrapper();
@@ -100,16 +108,18 @@ pub fn execute_with_input(contents: &str, input: Vec<&str>) -> Result<EnvWrapper
                 Rc::clone(&env),
                 Box::new(TestIOProvider::from_input(input)),
             );
-            inter.execute(&program.into_iter().map(|stmt| stmt.0).collect())?;
+            inter.execute(&program.into_iter().map(|stmt| stmt.deloc()).collect())?;
             Ok(env)
         }
-        Err(e) => Err(PseudocodeError::from(e.0)),
+        Err(e) => Err(PseudocodeError::from(e.deloc())),
     }
 }
 
 pub fn get_callable(contents: &str, name: &str) -> Result<Callable, PseudocodeError> {
     let lexer = Lexer::from(LocatableChars::from(contents));
-    let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, _)| e)?;
+    let tokens = lexer
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.deloc())?;
     let parser = Parser::from(tokens.into_iter());
     let program_result: Result<Vec<_>, _> = parser.collect();
     let env = Environment::new_wrapper();
@@ -117,10 +127,10 @@ pub fn get_callable(contents: &str, name: &str) -> Result<Callable, PseudocodeEr
         Ok(program) => {
             let mut inter =
                 Interpreter::from_environment(Rc::clone(&env), Box::new(TestIOProvider::new()));
-            inter.execute(&program.into_iter().map(|stmt| stmt.0).collect())?;
+            inter.execute(&program.into_iter().map(|stmt| stmt.deloc()).collect())?;
             Ok(inter.get_callable(name))
         }
-        Err(e) => Err(PseudocodeError::from(e.0)),
+        Err(e) => Err(PseudocodeError::from(e.deloc())),
     }
 }
 
@@ -135,19 +145,21 @@ pub fn check_output_stream(
     expected_output: Vec<&str>,
 ) -> Result<bool, PseudocodeError> {
     let lexer = Lexer::from(LocatableChars::from(contents));
-    let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, _)| e)?;
+    let tokens = lexer
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.deloc())?;
     let parser = Parser::from(tokens.into_iter());
     let program_result: Result<Vec<_>, _> = parser.collect();
     match program_result {
         Ok(program) => {
             let prov = Box::new(TestIOProvider::new());
             let mut inter = Interpreter::new(prov);
-            inter.execute(&program.into_iter().map(|stmt| stmt.0).collect())?;
+            inter.execute(&program.into_iter().map(|stmt| stmt.deloc()).collect())?;
             Ok(inter.get_prov().compare_output_stream(
                 expected_output.into_iter().map(ToOwned::to_owned).collect(),
             ))
         }
-        Err(e) => Err(PseudocodeError::from(e.0)),
+        Err(e) => Err(PseudocodeError::from(e.deloc())),
     }
 }
 
@@ -157,18 +169,20 @@ pub fn check_output_stream_with_input(
     expected_output: Vec<&str>,
 ) -> Result<bool, PseudocodeError> {
     let lexer = Lexer::from(LocatableChars::from(contents));
-    let tokens = lexer.collect::<Result<Vec<_>, _>>().map_err(|(e, _)| e)?;
+    let tokens = lexer
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.deloc())?;
     let parser = Parser::from(tokens.into_iter());
     let program_result: Result<Vec<_>, _> = parser.collect();
     match program_result {
         Ok(program) => {
             let prov = Box::new(TestIOProvider::from_input(input));
             let mut inter = Interpreter::new(prov);
-            inter.execute(&program.into_iter().map(|stmt| stmt.0).collect())?;
+            inter.execute(&program.into_iter().map(|stmt| stmt.deloc()).collect())?;
             Ok(inter.get_prov().compare_output_stream(
                 expected_output.into_iter().map(ToOwned::to_owned).collect(),
             ))
         }
-        Err(e) => Err(PseudocodeError::from(e.0)),
+        Err(e) => Err(PseudocodeError::from(e.deloc())),
     }
 }
