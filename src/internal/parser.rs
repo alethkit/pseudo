@@ -482,7 +482,6 @@ where
         }
     }
     fn subroutine_declaration(&mut self) -> LocResult<Statement> {
-        // TODO: Check if defined as variable
         let (subroutine_name, loc) = match self
             .consume(Token::VarIdentifier(String::new()))?
             .deconstruct()
